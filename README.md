@@ -1,37 +1,56 @@
+<img src=".github/assets/icon.svg" width="72" alt="">
+
 # swipekey
 
-Map macOS trackpad gestures to keystrokes and commands. A tiny, open-source
-alternative to BetterTouchTool for the "this swipe should press that key" use case.
+Turn Mac trackpad gestures into keystrokes and commands. Three fingers up, and it presses Return.
 
-Out of the box: **three-finger swipe up → Return**.
+One small background app, one JSON file, no account, no subscription. The code is free software under the MIT license.
 
-## Install
+[![License: MIT](https://img.shields.io/badge/license-MIT-141a2e)](LICENSE)
+[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-2346d8)](#run-it)
+[![CI](https://github.com/Snouzy/swipekey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Snouzy/swipekey/actions/workflows/ci.yml)
 
-Requires macOS 13+ and Swift 5.9+ (Xcode or Command Line Tools).
+[Run it](#run-it) · [Configure](#configure) · [Extend it](#extend-it) · [License](LICENSE)
+
+## Why
+
+I wanted a three-finger swipe up to press Return. macOS can't map a gesture to a key, and the tool that can, BetterTouchTool, is paid and closed for what is one line of configuration. The open-source options I found were abandoned or did something else. So swipekey does that one thing, and is built so the next gesture or action is a small addition, not a rewrite.
+
+## How it works
+
+```
+trackpad ─frames─▶ recognizers ─gesture─▶ engine ─▶ actions
+           (MultitouchSupport)            (your config)
+```
+
+swipekey reads raw touches from Apple's `MultitouchSupport` framework, the same source the system gestures use. A recognizer turns them into gestures (for now, swipes with any number of fingers), and the engine runs the actions you bound to them: a keystroke with modifiers, or a shell command. It needs Accessibility permission to post keystrokes, and nothing else: no network, no telemetry.
+
+## Run it
 
 ```sh
 make install
 ```
 
-This builds `~/Applications/Swipekey.app` (a background app, no Dock icon), links
-`~/.local/bin/swipekey` to it, writes a default config to `~/.config/swipekey/config.json`,
-and registers a LaunchAgent so it starts at login.
+Swift 5.9 or later (Xcode or the Command Line Tools) on macOS 13 or later. This builds `~/Applications/Swipekey.app`, writes a default config and registers a LaunchAgent, so swipekey **starts by itself every time you log in** and restarts if it crashes.
 
-Then:
+Then, once:
 
-1. **Free the gesture from macOS.** System Settings → Trackpad → More Gestures: set any
-   gesture that uses the same fingers and direction to four fingers or off
-   (three-finger swipe up is *Mission Control* by default).
-2. **Grant Accessibility** to `Swipekey.app` (needed to post key events): `make permissions`
-   opens the settings pane and reveals the app in Finder, drag it into the list.
-3. `make restart`, then check `make logs` no longer says "Accessibility permission missing".
+1. **Free the gesture.** System Settings → Trackpad → More Gestures: move *Mission Control* (or any gesture on the same fingers and direction) to four fingers, or turn it off.
+2. **Allow it.** `make permissions` opens System Settings → Privacy & Security → Accessibility and shows the app in Finder: drag `Swipekey.app` into the list.
+3. `make restart`, and swipe.
 
-Outside the project folder, the same commands are
-`launchctl kickstart -k gui/$(id -u)/io.github.swipekey` and `tail -f ~/Library/Logs/swipekey.log`.
+| Command | What it does |
+|---|---|
+| `make restart` | Reload after editing the config or granting permission |
+| `make logs` | Follow the log (`~/Library/Logs/swipekey.log`) |
+| `make test` | Unit tests, no trackpad needed |
+| `make uninstall` | Remove the app and the LaunchAgent, keep the config |
 
-`make uninstall` removes the app, the LaunchAgent and the shortcut, and keeps your config.
+`swipekey --debug` prints every gesture it recognizes.
 
 ## Configure
+
+`~/.config/swipekey/config.json`, then `make restart`:
 
 ```json
 {
@@ -49,58 +68,32 @@ Outside the project folder, the same commands are
 }
 ```
 
-After editing, run `make restart`.
-
 | Field | Values |
-| --- | --- |
-| `gesture.type` | `swipe` |
-| `gesture.fingers` | `2` and up |
-| `gesture.direction` | `up`, `down`, `left`, `right` |
-| `action.type` | `key` (with `key`, optional `modifiers`) or `shell` (with `command`) |
-| `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric virtual key code |
-| `modifiers` | `cmd`, `shift`, `option`, `control`, `fn` |
-| `swipeThreshold` | distance the fingers must travel, as a fraction of the trackpad (default `0.12`) |
+|---|---|
+| `gesture` | `swipe` with `fingers` (2 and up) and `direction` (`up`, `down`, `left`, `right`) |
+| `action` | `key` with `key` and optional `modifiers` (`cmd`, `shift`, `option`, `control`, `fn`), or `shell` with `command` |
+| `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code |
+| `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
 
-Debug recognition with `swipekey --debug`, which logs every gesture it sees.
-Your terminal app needs Accessibility permission to send keys when run that way.
+## Extend it
 
-## How it works
+- **A new action** (open a URL, run a Shortcut): a case in `ActionSpec` and a type that conforms to `Action`, in [`Actions.swift`](Sources/SwipeKeyCore/Actions.swift).
+- **A new gesture** (taps, pinches): a case in [`Gesture`](Sources/SwipeKeyCore/Gesture.swift), a `GestureRecognizer` in [`Recognizers.swift`](Sources/SwipeKeyCore/Recognizers.swift), and one line in `Engine.init`. Recognizers are plain classes fed with touch frames, so they are tested without a trackpad.
 
-```
-MultitouchSupport ─frames─▶ GestureRecognizer(s) ─Gesture─▶ Engine ─▶ Action(s)
- (CMultitouch, C)           (one set per device)           (config bindings)
-```
+## Repository
 
-- `Sources/CMultitouch`: loads Apple's private `MultitouchSupport.framework` with
-  `dlopen` and forwards raw touch frames from every trackpad.
-- `Sources/SwipeKeyCore/Gesture.swift`: the `Gesture` enum and its JSON form.
-- `Sources/SwipeKeyCore/Recognizers.swift`: `GestureRecognizer` protocol and `SwipeRecognizer`.
-- `Sources/SwipeKeyCore/Actions.swift`: `Action` protocol, `KeyPressAction`, `ShellAction`.
-- `Sources/SwipeKeyCore/Engine.swift`: wires recognizers to the actions bound in the config.
-
-## Extending
-
-**A new action** (e.g. open a URL, run a Shortcut): add a case to `ActionSpec` with its
-JSON decoding, implement `Action`, and return it from `ActionSpec.makeAction()`.
-
-**A new gesture** (e.g. taps, pinches): add a case to `Gesture` with its JSON decoding,
-write a `GestureRecognizer` that emits it from `TouchFrame`s, and add it to the list in
-`Engine.init`. Recognizers are plain classes fed with frames, so they can be unit tested
-without a trackpad (see `Tests/`).
-
-```sh
-make test
-```
+- `Sources/CMultitouch/`: the C bridge that loads `MultitouchSupport` and forwards touch frames.
+- `Sources/SwipeKeyCore/`: gestures, recognizers, actions, config and the engine.
+- `Sources/swipekey/`: the command-line entry point.
+- `support/`: the app's `Info.plist` and the LaunchAgent template.
+- `Tests/`: unit tests for recognition and config.
 
 ## Caveats
 
-- `MultitouchSupport` is a private Apple framework. It has been stable for over a decade
-  and is used by many tools, but a macOS update could break it.
-- The app is ad-hoc signed, so macOS ties the Accessibility grant to that exact build.
-  After reinstalling a new build, remove Swipekey from the Accessibility list and add it again.
-- macOS still sees the gesture too. If a system gesture uses the same fingers and
-  direction, both fire. Disable it as described above.
+- `MultitouchSupport` is private Apple API. It has been stable for over a decade and many tools rely on it, but a macOS update could break it.
+- The app is ad-hoc signed, so macOS ties the Accessibility grant to that exact build. After installing a new build, remove Swipekey from the Accessibility list and add it again.
+- macOS still sees the gesture. If a system gesture uses the same fingers and direction, both fire.
 
 ## License
 
-MIT
+Copyright (C) 2026 Snouzy and the swipekey contributors. [MIT](LICENSE).
