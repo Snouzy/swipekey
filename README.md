@@ -75,6 +75,109 @@ Then, once:
 | `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
 
+## Examples
+
+Each recipe is one or two entries to paste into `bindings`. Some recipes use the same gesture: pick one per gesture, since a gesture bound twice runs both actions. Before using one, check that macOS doesn't already use that gesture (System Settings → Trackpad → More Gestures).
+
+### Press Enter with a three-finger swipe on Mac
+
+Send messages, confirm dialogs or run terminal commands without reaching for the keyboard.
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "up" },
+  "action":  { "type": "key", "key": "return" } }
+```
+
+### Switch browser tabs with a trackpad swipe
+
+Previous and next tab in Safari, Chrome, Arc, Firefox and most editors (`⌘⇧[` and `⌘⇧]`).
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 4, "direction": "left" },
+  "action":  { "type": "key", "key": "[", "modifiers": ["cmd", "shift"] } },
+{ "gesture": { "type": "swipe", "fingers": 4, "direction": "right" },
+  "action":  { "type": "key", "key": "]", "modifiers": ["cmd", "shift"] } }
+```
+
+### Close a tab or window with a gesture
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 4, "direction": "down" },
+  "action":  { "type": "key", "key": "w", "modifiers": ["cmd"] } }
+```
+
+### Undo and redo with a swipe
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "left" },
+  "action":  { "type": "key", "key": "z", "modifiers": ["cmd"] } },
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "right" },
+  "action":  { "type": "key", "key": "z", "modifiers": ["cmd", "shift"] } }
+```
+
+### Press Escape with the trackpad (Vim, dialogs, full screen)
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "down" },
+  "action":  { "type": "key", "key": "escape" } }
+```
+
+### Take a screenshot with a gesture
+
+Opens the macOS selection screenshot (`⌘⇧4`).
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 5, "direction": "up" },
+  "action":  { "type": "key", "key": "4", "modifiers": ["cmd", "shift"] } }
+```
+
+### Play or pause music with a swipe
+
+Apple Music; replace `Music` with `Spotify` for Spotify.
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 5, "direction": "down" },
+  "action":  { "type": "shell", "command": "osascript -e 'tell application \"Music\" to playpause'" } }
+```
+
+### Change the volume with a trackpad gesture
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 5, "direction": "right" },
+  "action":  { "type": "shell", "command": "osascript -e 'set volume output volume ((output volume of (get volume settings)) + 10)'" } },
+{ "gesture": { "type": "swipe", "fingers": 5, "direction": "left" },
+  "action":  { "type": "shell", "command": "osascript -e 'set volume output volume ((output volume of (get volume settings)) - 10)'" } }
+```
+
+### Open an app or a website with a swipe
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 4, "direction": "up" },
+  "action":  { "type": "shell", "command": "open -a Terminal" } }
+```
+
+`open https://github.com` works the same way for a URL.
+
+### Run an Apple Shortcut from the trackpad
+
+Anything you built in the Shortcuts app: toggle Focus, start a timer, post to a webhook.
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 2, "direction": "up" },
+  "action":  { "type": "shell", "command": "shortcuts run \"My Shortcut\"" } }
+```
+
+Two-finger swipes also scroll the page, so keep them for actions where that doesn't matter.
+
+### Lock the screen with a gesture
+
+Turns the display off; it locks if *Require password* is set to *Immediately* in Lock Screen settings.
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 5, "direction": "down" },
+  "action":  { "type": "shell", "command": "pmset displaysleepnow" } }
+```
+
 ## Extend it
 
 - **A new action** (open a URL, run a Shortcut): a case in `ActionSpec` and a type that conforms to `Action`, in [`Actions.swift`](Sources/SwipeKeyCore/Actions.swift).
