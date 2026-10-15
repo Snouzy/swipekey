@@ -14,7 +14,7 @@ One small background app, one JSON file, no account, no subscription. The code i
 
 ## See it in 20 seconds
 
-[![Watch the 20-second film: the Return key is very, very far away](.github/assets/film-poster.jpg)](.github/assets/swipekey-film.mp4)
+https://github.com/user-attachments/assets/0cf9e363-3d3d-46f8-981e-50be8f00da7c
 
 ## Why
 
