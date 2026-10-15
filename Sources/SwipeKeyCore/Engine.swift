@@ -29,7 +29,14 @@ public final class Engine {
     private let makeRecognizers: () -> [GestureRecognizer]
     private let heldModifiers: () -> CGEventFlags
     private var recognizersByDevice: [UInt: [GestureRecognizer]] = [:]
+    private var fingersByDevice: [UInt: Int] = [:]
     private let lock = NSLock()
+
+    /// Fingers currently pressed on the busiest trackpad (thread-safe).
+    public var activeFingers: Int {
+        lock.lock(); defer { lock.unlock() }
+        return fingersByDevice.values.max() ?? 0
+    }
 
     /// Called for every recognized gesture, bound or not (used by `--debug`).
     public var onGesture: ((Trigger) -> Void)?
@@ -60,6 +67,7 @@ public final class Engine {
         lock.lock()
         let recognizers = recognizersByDevice[device] ?? makeRecognizers()
         recognizersByDevice[device] = recognizers
+        fingersByDevice[device] = frame.touches.filter(\.isTouching).count
         let gestures = recognizers.flatMap { $0.process(frame) }
         lock.unlock()
 

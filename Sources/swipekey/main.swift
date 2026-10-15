@@ -71,6 +71,19 @@ guard let deviceCount = MultitouchSource.start(engine) else {
 if deviceCount == 0 { fail("no multitouch device found") }
 log("swipekey running on \(deviceCount) device(s) with \(config.bindings.count) binding(s).")
 
+// Keep multi-finger swipes from also scrolling the window under the cursor.
+var scrollBlocker: ScrollBlocker?
+if config.blockScrollWithFingers > 0 {
+    let blocker = ScrollBlocker(minFingers: config.blockScrollWithFingers) { engine.activeFingers }
+    if debug { blocker.onScroll = { n, phase, momentum, dropped in log("scroll fingers=\(n) phase=\(phase) momentum=\(momentum) \(dropped ? "DROPPED" : "passed")") } }
+    if blocker.start() {
+        scrollBlocker = blocker
+        log("Blocking scroll while \(config.blockScrollWithFingers)+ fingers touch the trackpad.")
+    } else {
+        log("Could not install the scroll filter (Accessibility permission?): swipes may also scroll.")
+    }
+}
+
 // After sleep, MultitouchSupport devices stop sending frames: restart them on wake.
 let workspaceCenter = NSWorkspace.shared.notificationCenter
 workspaceCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in

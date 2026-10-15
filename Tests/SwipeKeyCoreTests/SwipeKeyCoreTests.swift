@@ -181,3 +181,92 @@ final class HoldingTests: XCTestCase {
         XCTAssertThrowsError(try Engine(config: config))
     }
 }
+
+final class ScrollFilterTests: XCTestCase {
+    private let began = ScrollFilter.phaseBegan, changed: Int64 = 2, ended = ScrollFilter.phaseEnded
+
+    func testTwoFingerScrollPassesThrough() {
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: began, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 2)) // its own inertia
+    }
+
+    func testThreeFingerScrollAndItsTailAreSwallowed() {
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: began, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: changed, momentumPhase: 0))
+        // fingers lifted: the gesture's end and the inertia still belong to the swipe
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: ended, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 1))
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 2))
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: ScrollFilter.momentumEnd))
+        // then normal scrolling is back
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: began, momentumPhase: 0))
+    }
+
+    func testFingersLiftingOneByOneStillSwallowsTheInertia() {
+        // Recorded with --debug: a three-finger swipe up in a terminal, fingers lifting unevenly.
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: began, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 2, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 1, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 1, scrollPhase: ended, momentumPhase: 0))
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 1))
+        XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 128, momentumPhase: 0)) // "may begin"
+        for _ in 0..<80 { XCTAssertTrue(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 2)) }
+        XCTAssertTrue(f.shouldDrop(fingers: 1, scrollPhase: 0, momentumPhase: ScrollFilter.momentumEnd))
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: began, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: changed, momentumPhase: 0))
+    }
+
+    func testMouseWheelEndsSwallowing() {
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 0))
+    }
+
+    func testFreshScrollEndsSwallowingEvenWithoutMomentum() {
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertTrue(f.shouldDrop(fingers: 3, scrollPhase: changed, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: began, momentumPhase: 0))
+        XCTAssertFalse(f.shouldDrop(fingers: 2, scrollPhase: changed, momentumPhase: 0))
+    }
+
+    func testMouseWheelPassesThrough() {
+        var f = ScrollFilter(minFingers: 3)
+        XCTAssertFalse(f.shouldDrop(fingers: 0, scrollPhase: 0, momentumPhase: 0))
+    }
+
+    func testDisabledWithZero() {
+        var f = ScrollFilter(minFingers: 0)
+        XCTAssertFalse(f.shouldDrop(fingers: 5, scrollPhase: changed, momentumPhase: 0))
+    }
+}
+
+final class FingerCountTests: XCTestCase {
+    func testEngineTracksTheBusiestTrackpad() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        let three = TouchFrame(touches: (0..<3).map { Touch(x: 0.3 + Double($0) * 0.1, y: 0.5, identifier: $0) }, timestamp: 0)
+        engine.handle(three, device: 1)
+        engine.handle(TouchFrame(touches: [Touch(x: 0.5, y: 0.5, identifier: 0)], timestamp: 0), device: 2)
+        XCTAssertEqual(engine.activeFingers, 3)
+        engine.handle(TouchFrame(touches: [], timestamp: 0.1), device: 1)
+        XCTAssertEqual(engine.activeFingers, 1)
+    }
+
+    func testHoveringFingersDontCount() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        engine.handle(TouchFrame(touches: (0..<3).map { Touch(x: 0.5, y: 0.5, identifier: $0, state: 2) }, timestamp: 0), device: 1)
+        XCTAssertEqual(engine.activeFingers, 0)
+    }
+}
+
+final class BlockScrollConfigTests: XCTestCase {
+    func testDefaultsToThreeAndCanBeTurnedOff() throws {
+        let plain = #"{"bindings":[]}"#, off = #"{"blockScrollWithFingers":0,"bindings":[]}"#
+        XCTAssertEqual(try JSONDecoder().decode(Config.self, from: Data(plain.utf8)).blockScrollWithFingers, 3)
+        XCTAssertEqual(try JSONDecoder().decode(Config.self, from: Data(off.utf8)).blockScrollWithFingers, 0)
+    }
+}

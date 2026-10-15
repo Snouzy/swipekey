@@ -80,6 +80,7 @@ Then, once:
 | `action` | `key` with `key` and optional `modifiers` (`cmd`, `shift`, `option`, `control`, `fn`), or `shell` with `command` |
 | `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code. Characters follow your keyboard layout: `z` is the key that types z, on QWERTY, AZERTY, QWERTZ or Dvorak |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
+| `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
 
 ## Examples
 
@@ -213,7 +214,7 @@ Turns the display off; it locks if *Require password* is set to *Immediately* in
 
 - `MultitouchSupport` is private Apple API. It has been stable for over a decade and many tools rely on it, but a macOS update could break it.
 - `make install` signs the app with your Apple Development or Developer ID certificate when your keychain has one, and macOS then keeps the Accessibility grant across updates. Without a certificate the app is signed ad hoc, and macOS ties the grant to that exact build: after each update, turn Swipekey off and on in the Accessibility list, then `make restart`. Either way, `make install` only replaces the app when the code changed.
-- macOS still sees the gesture. If a system gesture uses the same fingers and direction, both fire.
+- macOS still sees the gesture. If a system gesture uses the same fingers and direction, both fire. With those gestures off, macOS treats a three-finger swipe as plain scrolling: swipekey swallows that scrolling (see `blockScrollWithFingers`).
 
 ## License
 

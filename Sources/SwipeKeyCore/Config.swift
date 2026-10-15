@@ -33,18 +33,23 @@ public struct Binding: Codable, Equatable {
 public struct Config: Codable, Equatable {
     /// Swipe distance in normalized trackpad units (0...1 across the pad).
     public var swipeThreshold: Double
+    /// Swallow scroll events while this many fingers (or more) touch the trackpad, so a swipe
+    /// doesn't also scroll the window underneath. 0 turns it off.
+    public var blockScrollWithFingers: Int
     public var bindings: [Binding]
 
-    public init(swipeThreshold: Double = 0.12, bindings: [Binding]) {
+    public init(swipeThreshold: Double = 0.12, blockScrollWithFingers: Int = 3, bindings: [Binding]) {
         self.swipeThreshold = swipeThreshold
+        self.blockScrollWithFingers = blockScrollWithFingers
         self.bindings = bindings
     }
 
-    private enum CodingKeys: String, CodingKey { case swipeThreshold, bindings }
+    private enum CodingKeys: String, CodingKey { case swipeThreshold, blockScrollWithFingers, bindings }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         swipeThreshold = try c.decodeIfPresent(Double.self, forKey: .swipeThreshold) ?? 0.12
+        blockScrollWithFingers = try c.decodeIfPresent(Int.self, forKey: .blockScrollWithFingers) ?? 3
         bindings = try c.decode([Binding].self, forKey: .bindings)
     }
 
