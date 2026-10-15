@@ -59,8 +59,9 @@ Then, once:
     { "gesture": { "type": "swipe", "fingers": 3, "direction": "up" },
       "action":  { "type": "key", "key": "return" } },
 
-    { "gesture": { "type": "swipe", "fingers": 4, "direction": "left" },
-      "action":  { "type": "key", "key": "[", "modifiers": ["cmd", "shift"] } },
+    { "gesture": { "type": "swipe", "fingers": 3, "direction": "up" },
+      "holding": ["cmd"],
+      "action":  { "type": "key", "key": "return", "modifiers": ["shift"] } },
 
     { "gesture": { "type": "swipe", "fingers": 3, "direction": "down" },
       "action":  { "type": "shell", "command": "open -a Terminal" } }
@@ -71,8 +72,9 @@ Then, once:
 | Field | Values |
 |---|---|
 | `gesture` | `swipe` with `fingers` (2 and up) and `direction` (`up`, `down`, `left`, `right`) |
+| `holding` | optional: modifier keys you hold on the keyboard during the gesture (`cmd`, `shift`, `option`, `control`). The binding fires only with exactly those held, so a plain swipe and a ⌘ + swipe can do different things |
 | `action` | `key` with `key` and optional `modifiers` (`cmd`, `shift`, `option`, `control`, `fn`), or `shell` with `command` |
-| `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code |
+| `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code. Characters follow your keyboard layout: `z` is the key that types z, on QWERTY, AZERTY, QWERTZ or Dvorak |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
 
 ## Examples
@@ -90,13 +92,25 @@ Send messages, confirm dialogs or run terminal commands without reaching for the
 
 ### Switch browser tabs with a trackpad swipe
 
-Previous and next tab in Safari, Chrome, Arc, Firefox and most editors (`⌘⇧[` and `⌘⇧]`).
+Previous and next tab in Safari, Chrome, Arc, Firefox and most editors. `⌃⇧Tab` and `⌃Tab` work on every keyboard layout, unlike `⌘⇧[`, which has no single key on AZERTY.
 
 ```json
 { "gesture": { "type": "swipe", "fingers": 4, "direction": "left" },
-  "action":  { "type": "key", "key": "[", "modifiers": ["cmd", "shift"] } },
+  "action":  { "type": "key", "key": "tab", "modifiers": ["control", "shift"] } },
 { "gesture": { "type": "swipe", "fingers": 4, "direction": "right" },
-  "action":  { "type": "key", "key": "]", "modifiers": ["cmd", "shift"] } }
+  "action":  { "type": "key", "key": "tab", "modifiers": ["control"] } }
+```
+
+### Combine a trackpad gesture with a modifier key (Command, Option, Shift)
+
+Hold a key on the keyboard while you swipe to get a second action on the same gesture. Here a plain swipe up sends Return, and ⌘ + swipe up sends ⇧Return (a new line in Slack, Messages or ChatGPT instead of sending).
+
+```json
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "up" },
+  "action":  { "type": "key", "key": "return" } },
+{ "gesture": { "type": "swipe", "fingers": 3, "direction": "up" },
+  "holding": ["cmd"],
+  "action":  { "type": "key", "key": "return", "modifiers": ["shift"] } }
 ```
 
 ### Close a tab or window with a gesture
@@ -194,7 +208,7 @@ Turns the display off; it locks if *Require password* is set to *Immediately* in
 ## Caveats
 
 - `MultitouchSupport` is private Apple API. It has been stable for over a decade and many tools rely on it, but a macOS update could break it.
-- The app is ad-hoc signed, so macOS ties the Accessibility grant to that exact build. After installing a new build, remove Swipekey from the Accessibility list and add it again.
+- `make install` signs the app with your Apple Development or Developer ID certificate when your keychain has one, and macOS then keeps the Accessibility grant across updates. Without a certificate the app is signed ad hoc, and macOS ties the grant to that exact build: after each update, turn Swipekey off and on in the Accessibility list, then `make restart`. Either way, `make install` only replaces the app when the code changed.
 - macOS still sees the gesture. If a system gesture uses the same fingers and direction, both fire.
 
 ## License

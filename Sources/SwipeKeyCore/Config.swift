@@ -2,11 +2,31 @@ import Foundation
 
 public struct Binding: Codable, Equatable {
     public var gesture: Gesture
+    /// Keyboard modifiers that must be held during the gesture, e.g. `["cmd"]`.
+    /// Empty means the gesture only fires with no modifier held.
+    public var holding: [String]
     public var action: ActionSpec
 
-    public init(gesture: Gesture, action: ActionSpec) {
+    public init(gesture: Gesture, holding: [String] = [], action: ActionSpec) {
         self.gesture = gesture
+        self.holding = holding
         self.action = action
+    }
+
+    private enum CodingKeys: String, CodingKey { case gesture, holding, action }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gesture = try c.decode(Gesture.self, forKey: .gesture)
+        holding = try c.decodeIfPresent([String].self, forKey: .holding) ?? []
+        action = try c.decode(ActionSpec.self, forKey: .action)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(gesture, forKey: .gesture)
+        if !holding.isEmpty { try c.encode(holding, forKey: .holding) }
+        try c.encode(action, forKey: .action)
     }
 }
 

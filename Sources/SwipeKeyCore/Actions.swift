@@ -60,26 +60,48 @@ public struct ConfigError: Error, CustomStringConvertible {
 }
 
 /// Posts a key down / key up pair, as if typed on the keyboard. Needs Accessibility permission.
+///
+/// Named keys (`return`, `tab`, arrows...) have fixed key codes. A character key (`z`, `[`, `4`)
+/// is looked up in the current keyboard layout, so `cmd` + `z` is undo on AZERTY too; if the
+/// layout has no such key, the US QWERTY position is used.
 public struct KeyPressAction: Action {
-    public let keyCode: CGKeyCode
-    public let flags: CGEventFlags
+    public enum Key: Equatable {
+        case code(CGKeyCode)
+        case character(Character, fallback: CGKeyCode?)
+    }
 
-    public init(key: String, modifiers: [String] = []) throws {
-        guard let code = KeyCodes.code(for: key) else {
-            throw ConfigError("Unknown key \"\(key)\". Use a name like \"return\", \"a\", \"f5\" or a numeric key code.")
+    public let key: Key
+    public let flags: CGEventFlags
+    private let layout: KeyboardLayout
+
+    public init(key: String, modifiers: [String] = [], layout: KeyboardLayout = SystemKeyboardLayout()) throws {
+        let lowered = key.lowercased()
+        if let code = KeyCodes.named[lowered] {
+            self.key = .code(code)
+        } else if lowered.count == 1, let character = lowered.first {
+            self.key = .character(character, fallback: KeyCodes.ansiCharacters[character])
+        } else if let code = CGKeyCode(key) {
+            self.key = .code(code)
+        } else {
+            throw ConfigError("Unknown key \"\(key)\". Use a name like \"return\" or \"f5\", a single character like \"a\", or a numeric key code.")
         }
-        var flags: CGEventFlags = []
-        for modifier in modifiers {
-            guard let flag = KeyCodes.modifiers[modifier.lowercased()] else {
-                throw ConfigError("Unknown modifier \"\(modifier)\". Use cmd, shift, option, control or fn.")
-            }
-            flags.insert(flag)
+        self.flags = try KeyCodes.flags(for: modifiers)
+        self.layout = layout
+    }
+
+    /// The key code to post right now, given the current layout.
+    public func resolvedKeyCode() throws -> CGKeyCode {
+        switch key {
+        case let .code(code):
+            return code
+        case let .character(character, fallback):
+            if let code = layout.keyCode(for: character) ?? fallback { return code }
+            throw ConfigError("No key types \"\(character)\" in the current keyboard layout")
         }
-        self.keyCode = code
-        self.flags = flags
     }
 
     public func perform() throws {
+        let keyCode = try resolvedKeyCode()
         let source = CGEventSource(stateID: .hidSystemState)
         for isDown in [true, false] {
             guard let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: isDown) else {
@@ -112,14 +134,19 @@ public enum KeyCodes {
         "fn": .maskSecondaryFn,
     ]
 
-    /// macOS virtual key codes (ANSI layout), from HIToolbox/Events.h.
+    public static func flags(for modifiers: [String]) throws -> CGEventFlags {
+        var flags: CGEventFlags = []
+        for modifier in modifiers {
+            guard let flag = Self.modifiers[modifier.lowercased()] else {
+                throw ConfigError("Unknown modifier \"\(modifier)\". Use cmd, shift, option, control or fn.")
+            }
+            flags.insert(flag)
+        }
+        return flags
+    }
+
+    /// Layout-independent keys, from HIToolbox/Events.h.
     public static let named: [String: CGKeyCode] = [
-        "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7, "c": 8, "v": 9,
-        "b": 11, "q": 12, "w": 13, "e": 14, "r": 15, "y": 16, "t": 17,
-        "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23, "=": 24, "9": 25, "7": 26,
-        "-": 27, "8": 28, "0": 29, "]": 30, "o": 31, "u": 32, "[": 33, "i": 34, "p": 35,
-        "l": 37, "j": 38, "'": 39, "k": 40, ";": 41, "\\": 42, ",": 43, "/": 44,
-        "n": 45, "m": 46, ".": 47, "`": 50,
         "return": 36, "tab": 48, "space": 49, "delete": 51, "backspace": 51, "escape": 53, "esc": 53,
         "enter": 76, "forwarddelete": 117, "home": 115, "end": 119, "pageup": 116, "pagedown": 121,
         "left": 123, "right": 124, "down": 125, "up": 126,
@@ -127,8 +154,14 @@ public enum KeyCodes {
         "f9": 101, "f10": 109, "f11": 103, "f12": 111,
     ]
 
-    public static func code(for key: String) -> CGKeyCode? {
-        if let code = named[key.lowercased()] { return code }
-        return CGKeyCode(key)
-    }
+    /// Character positions on a US QWERTY keyboard: the fallback when the current layout
+    /// has no key for a character (e.g. "z" on a Cyrillic layout, where shortcuts use QWERTY).
+    public static let ansiCharacters: [Character: CGKeyCode] = [
+        "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7, "c": 8, "v": 9,
+        "b": 11, "q": 12, "w": 13, "e": 14, "r": 15, "y": 16, "t": 17,
+        "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23, "=": 24, "9": 25, "7": 26,
+        "-": 27, "8": 28, "0": 29, "]": 30, "o": 31, "u": 32, "[": 33, "i": 34, "p": 35,
+        "l": 37, "j": 38, "'": 39, "k": 40, ";": 41, "\\": 42, ",": 43, "/": 44,
+        "n": 45, "m": 46, ".": 47, "`": 50,
+    ]
 }

@@ -52,10 +52,12 @@ if FileManager.default.fileExists(atPath: configURL.path) {
     log("No config at \(configURL.path), using defaults (3-finger swipe up → Return).")
 }
 
-// Posting key events requires Accessibility; this shows the system prompt the first time.
-let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-if !AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary) {
-    log("Accessibility permission missing: allow Swipekey (or your terminal) in System Settings → Privacy & Security → Accessibility, then restart it.")
+// Posting key events is gated by its own check (CGPreflightPostEventAccess), which can differ
+// from the general Accessibility trust; CGRequestPostEventAccess shows the system prompt once.
+let canPostEvents = CGPreflightPostEventAccess() || CGRequestPostEventAccess()
+log("Permissions: post key events \(canPostEvents ? "yes" : "no"), accessibility trusted \(AXIsProcessTrusted() ? "yes" : "no").")
+if !canPostEvents {
+    log("Swipekey can't send keystrokes: allow it in System Settings → Privacy & Security → Accessibility, then restart it.")
 }
 
 let engine: Engine
