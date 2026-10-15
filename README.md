@@ -12,6 +12,10 @@ One small background app, one JSON file, no account, no subscription. The code i
 
 [Run it](#run-it) · [Configure](#configure) · [Extend it](#extend-it) · [License](LICENSE)
 
+## See it in 20 seconds
+
+[![Watch the 20-second film: the Return key is very, very far away](.github/assets/film-poster.jpg)](.github/assets/swipekey-film.mp4)
+
 ## Why
 
 I wanted a three-finger swipe up to press Return. macOS can't map a gesture to a key, and the tool that can, BetterTouchTool, is paid and closed for what is one line of configuration. The open-source options I found were abandoned or did something else. So swipekey does that one thing, and is built so the next gesture or action is a small addition, not a rewrite.
