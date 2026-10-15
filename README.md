@@ -14,7 +14,7 @@ One small background app, one JSON file, no account, no subscription. The code i
 
 ## See it in 20 seconds
 
-https://github.com/user-attachments/assets/0cf9e363-3d3d-46f8-981e-50be8f00da7c
+https://github.com/user-attachments/assets/8ae8eca5-6d44-4450-a904-4cdcdbf22462
 
 ## Why
 
