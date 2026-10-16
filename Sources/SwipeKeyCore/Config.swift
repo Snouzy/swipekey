@@ -37,20 +37,24 @@ public struct Config: Codable, Equatable {
     /// doesn't also scroll the window underneath. 0 turns it off.
     public var blockScrollWithFingers: Int
     public var bindings: [Binding]
+    /// Key events to rewrite, e.g. to fix a shortcut another app sends without its modifiers.
+    public var remaps: [KeyRemap]
 
-    public init(swipeThreshold: Double = 0.12, blockScrollWithFingers: Int = 3, bindings: [Binding]) {
+    public init(swipeThreshold: Double = 0.12, blockScrollWithFingers: Int = 3, bindings: [Binding], remaps: [KeyRemap] = []) {
+        self.remaps = remaps
         self.swipeThreshold = swipeThreshold
         self.blockScrollWithFingers = blockScrollWithFingers
         self.bindings = bindings
     }
 
-    private enum CodingKeys: String, CodingKey { case swipeThreshold, blockScrollWithFingers, bindings }
+    private enum CodingKeys: String, CodingKey { case swipeThreshold, blockScrollWithFingers, bindings, remaps }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         swipeThreshold = try c.decodeIfPresent(Double.self, forKey: .swipeThreshold) ?? 0.12
         blockScrollWithFingers = try c.decodeIfPresent(Int.self, forKey: .blockScrollWithFingers) ?? 3
         bindings = try c.decode([Binding].self, forKey: .bindings)
+        remaps = try c.decodeIfPresent([KeyRemap].self, forKey: .remaps) ?? []
     }
 
     /// Used when no config file exists: three-finger swipe up presses Return.

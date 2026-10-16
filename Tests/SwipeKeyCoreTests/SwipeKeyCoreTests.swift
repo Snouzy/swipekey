@@ -270,3 +270,118 @@ final class BlockScrollConfigTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Config.self, from: Data(off.utf8)).blockScrollWithFingers, 0)
     }
 }
+
+final class KeyRemapTests: XCTestCase {
+    private let logi = ("logi options+", "com.logi.optionsplus")
+    private func remapper(_ remaps: [KeyRemap]) throws -> KeyRemapper { try KeyRemapper(remaps, layout: FakeAZERTY()) }
+    private let spaceFromLogi = KeyRemap(from: .init(key: "space", app: "Logi Options+"), to: .init(key: "space", modifiers: ["control", "option"]))
+
+    func testAddsTheLostModifiersOnlyForTheNamedApp() throws {
+        let r = try remapper([spaceFromLogi])
+        let out = r.map(keyCode: 49, flags: [], sender: { self.logi })
+        XCTAssertEqual(out?.keyCode, 49)
+        XCTAssertEqual(out?.flags, [.maskControl, .maskAlternate])
+        // the real space bar (hardware) is untouched
+        XCTAssertNil(r.map(keyCode: 49, flags: [], sender: { ("hardware", "") }))
+    }
+
+    func testAppMatchesNameOrBundleIdCaseInsensitively() throws {
+        let byBundle = KeyRemap(from: .init(key: "space", app: "COM.LOGI.OPTIONSPLUS"), to: .init(key: "escape"))
+        XCTAssertEqual(try remapper([byBundle]).map(keyCode: 49, flags: [], sender: { self.logi })?.keyCode, 53)
+    }
+
+    func testModifiersMustMatchExactly() throws {
+        let r = try remapper([spaceFromLogi])
+        XCTAssertNil(r.map(keyCode: 49, flags: .maskShift, sender: { self.logi }))
+        XCTAssertNotNil(r.map(keyCode: 49, flags: .maskAlphaShift, sender: { self.logi })) // caps lock isn't a held modifier
+    }
+
+    func testNoAppMeansAnySender() throws {
+        let r = try remapper([KeyRemap(from: .init(key: "f5"), to: .init(key: "return"))])
+        XCTAssertEqual(r.map(keyCode: 96, flags: [], sender: { ("hardware", "") })?.keyCode, 36)
+    }
+
+    func testCharactersFollowTheLayout() throws {
+        // "z" on AZERTY is key code 13 on both sides of the rule
+        let r = try remapper([KeyRemap(from: .init(key: "z", modifiers: ["cmd"]), to: .init(key: "z", modifiers: ["cmd", "shift"]))])
+        XCTAssertEqual(r.map(keyCode: 13, flags: .maskCommand, sender: { ("hardware", "") })?.flags, [.maskCommand, .maskShift])
+        XCTAssertNil(r.map(keyCode: 6, flags: .maskCommand, sender: { ("hardware", "") }))
+    }
+
+    func testKeepsNonModifierFlags() throws {
+        let out = try remapper([spaceFromLogi]).map(keyCode: 49, flags: .maskNonCoalesced, sender: { self.logi })
+        XCTAssertTrue(out!.flags.contains(.maskNonCoalesced))
+    }
+
+    func testReleaseIsPairedWithItsPressEvenWithTheAddedModifiersHeld() throws {
+        // F13 -> ctrl+opt+F14: by the time F13 comes up, ctrl+opt look held (we pressed them).
+        var r = try remapper([KeyRemap(from: .init(key: "105"), to: .init(key: "107", modifiers: ["control", "option"]))])
+        let down = r.handle(keyCode: 105, flags: .maskSecondaryFn, isDown: true, sender: { ("hardware", "") })
+        XCTAssertEqual(down?.keyCode, 107)
+        XCTAssertEqual(down?.pressesModifiers, true)
+        let up = r.handle(keyCode: 105, flags: [.maskControl, .maskAlternate, .maskSecondaryFn], isDown: false, sender: { ("hardware", "") })
+        XCTAssertEqual(up, down)
+        // and only once: a later lone key-up isn't rewritten
+        XCTAssertNil(r.handle(keyCode: 105, flags: [.maskControl, .maskAlternate], isDown: false, sender: { ("hardware", "") }))
+    }
+
+    func testRewriteWithoutNewModifiersStaysInPlace() throws {
+        let out = try remapper([KeyRemap(from: .init(key: "f5"), to: .init(key: "return"))]).map(keyCode: 96, flags: [], sender: { ("hardware", "") })
+        XCTAssertEqual(out?.pressesModifiers, false)
+    }
+
+    func testRejectsFnInFrom() {
+        XCTAssertThrowsError(try remapper([KeyRemap(from: .init(key: "a", modifiers: ["fn"]), to: .init(key: "b"))]))
+    }
+
+    func testDecodesFromJSON() throws {
+        let json = #"{"bindings":[],"remaps":[{"from":{"key":"space","app":"Logi Options+"},"to":{"key":"space","modifiers":["control","option"]}}]}"#
+        XCTAssertEqual(try JSONDecoder().decode(Config.self, from: Data(json.utf8)).remaps, [spaceFromLogi])
+    }
+
+    // Performance: ordinary typing must not pay for remaps.
+    func testSenderIsNeverLookedUpForKeysWithoutARule() throws {
+        let r = try remapper([spaceFromLogi])
+        var lookups = 0
+        for code in CGKeyCode(0)..<128 where code != 49 {
+            XCTAssertNil(r.map(keyCode: code, flags: [], sender: { lookups += 1; return self.logi }))
+        }
+        XCTAssertEqual(lookups, 0)
+    }
+
+    func testAMillionUnmatchedKeysStayFast() throws {
+        let r = try remapper([spaceFromLogi])
+        let start = Date()
+        var hits = 0
+        for i in 0..<1_000_000 where r.map(keyCode: CGKeyCode(i % 48), flags: [], sender: { self.logi }) != nil { hits += 1 }
+        XCTAssertEqual(hits, 0)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1.0)
+    }
+}
+
+final class KeystrokeTests: XCTestCase {
+    func testControlOptionSpaceLikeAKeyboard() {
+        let f: CGEventFlags = [.maskControl, .maskAlternate]
+        XCTAssertEqual(Keystroke.press(49, flags: f) + Keystroke.release(49, flags: f), [
+            KeystrokeEvent(kind: .modifierDown, keyCode: 59, flags: .maskControl),
+            KeystrokeEvent(kind: .modifierDown, keyCode: 58, flags: [.maskControl, .maskAlternate]),
+            KeystrokeEvent(kind: .keyDown, keyCode: 49, flags: f),
+            KeystrokeEvent(kind: .keyUp, keyCode: 49, flags: f),
+            KeystrokeEvent(kind: .modifierUp, keyCode: 58, flags: .maskControl),
+            KeystrokeEvent(kind: .modifierUp, keyCode: 59, flags: []),
+        ])
+    }
+
+    func testPlainKeyIsJustDownAndUp() {
+        XCTAssertEqual(Keystroke.press(36, flags: []).map(\.kind), [.keyDown])
+        XCTAssertEqual(Keystroke.release(36, flags: []).map(\.kind), [.keyUp])
+    }
+
+    func testModifierEventsAreFlagsChanged() {
+        let step = KeystrokeEvent(kind: .modifierDown, keyCode: 55, flags: .maskCommand)
+        let e = Keystroke.cgEvent(step, source: nil)
+        XCTAssertEqual(e?.type, .flagsChanged)
+        XCTAssertEqual(e?.getIntegerValueField(.keyboardEventKeycode), 55)
+        XCTAssertEqual(e?.flags.contains(.maskCommand), true)
+    }
+}

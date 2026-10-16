@@ -81,6 +81,7 @@ Then, once:
 | `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code. Characters follow your keyboard layout: `z` is the key that types z, on QWERTY, AZERTY, QWERTZ or Dvorak |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
 | `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
+| `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipe below |
 
 ## Examples
 
@@ -196,6 +197,19 @@ Turns the display off; it locks if *Require password* is set to *Immediately* in
 { "gesture": { "type": "swipe", "fingers": 5, "direction": "down" },
   "action":  { "type": "shell", "command": "pmset displaysleepnow" } }
 ```
+
+### Fix a mouse button shortcut that loses its modifiers (Logi Options+)
+
+Some mouse utilities send a shortcut's key without its modifiers on non-US keyboards: Logi Options+ sends a plain Space for ⌃⌥Space on French AZERTY, so dictation apps like Wispr Flow never see the shortcut. Map that button to Space in the mouse app, then put the modifiers back, only for events that app sends (your real space bar is untouched):
+
+```json
+"remaps": [
+  { "from": { "key": "space", "app": "Logi Options+" },
+    "to":   { "key": "space", "modifiers": ["control", "option"] } }
+]
+```
+
+`remaps` sits next to `bindings` at the top level of the config.
 
 ## Extend it
 

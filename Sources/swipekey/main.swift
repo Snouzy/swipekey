@@ -71,6 +71,21 @@ guard let deviceCount = MultitouchSource.start(engine) else {
 if deviceCount == 0 { fail("no multitouch device found") }
 log("swipekey running on \(deviceCount) device(s) with \(config.bindings.count) binding(s).")
 
+// Rewrite key events listed in "remaps" (only installed when there are some: zero cost otherwise).
+var keyRemapTap: KeyRemapTap?
+if !config.remaps.isEmpty {
+    do {
+        let tap = KeyRemapTap(try KeyRemapper(config.remaps))
+        if debug { tap.onRemap = { from, to, sender in log("remap key \(from) -> \(to) from \(sender)") } }
+        if tap.start() {
+            keyRemapTap = tap
+            log("Remapping \(config.remaps.count) key(s).")
+        } else {
+            log("Could not install the key remapper (Accessibility permission?).")
+        }
+    } catch { fail("invalid remap: \(error)") }
+}
+
 // Keep multi-finger swipes from also scrolling the window under the cursor.
 var scrollBlocker: ScrollBlocker?
 if config.blockScrollWithFingers > 0 {
