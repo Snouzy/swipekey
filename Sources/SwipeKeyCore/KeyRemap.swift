@@ -142,6 +142,8 @@ public final class KeyRemapTap {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
+        // our own posted keystrokes go straight through (no loop, no double rewrite)
+        if event.getIntegerValueField(.eventSourceUserData) == Keystroke.marker { return Unmanaged.passUnretained(event) }
         let code = CGKeyCode(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
         guard let out = remapper.handle(keyCode: code, flags: event.flags, isDown: type == .keyDown, sender: { sender(of: event) }) else {
             return Unmanaged.passUnretained(event)
@@ -154,12 +156,9 @@ public final class KeyRemapTap {
             event.flags = newFlags
             return Unmanaged.passUnretained(event)
         }
-        // New modifiers: replay what a keyboard sends (modifiers down, key, modifiers up), injected right
-        // here so the order is kept, and drop the original event.
+        // New modifiers: drop the original and replay what a keyboard sends (modifiers down, key, modifiers up).
         let steps = type == .keyDown ? Keystroke.press(newCode, flags: newFlags) : Keystroke.release(newCode, flags: newFlags)
-        // A neutral source: copying the original event's source makes its modifier state override our flags.
-        let source = CGEventSource(stateID: .privateState)
-        for step in steps { if let e = Keystroke.cgEvent(step, source: source) { e.tapPostEvent(proxy) } }
+        try? Keystroke.post(steps)
         return nil
     }
 

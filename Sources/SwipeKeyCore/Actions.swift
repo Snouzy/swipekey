@@ -102,12 +102,8 @@ public struct KeyPressAction: Action {
 
     public func perform() throws {
         let keyCode = try resolvedKeyCode()
-        let source = CGEventSource(stateID: .hidSystemState)
         // Like a real keyboard: modifiers down, key down, key up, modifiers up.
-        for step in Keystroke.press(keyCode, flags: flags) + Keystroke.release(keyCode, flags: flags) {
-            guard let event = Keystroke.cgEvent(step, source: source) else { throw ConfigError("Could not create keyboard event") }
-            event.post(tap: .cghidEventTap)
-        }
+        try Keystroke.post(Keystroke.press(keyCode, flags: flags) + Keystroke.release(keyCode, flags: flags))
     }
 }
 

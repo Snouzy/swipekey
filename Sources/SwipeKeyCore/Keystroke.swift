@@ -12,6 +12,8 @@ public struct KeystrokeEvent: Equatable {
 /// (flagsChanged), then the key, then the modifiers come back up in reverse order. Some apps (Wispr Flow,
 /// many hotkey recorders) track modifier presses and ignore a key that merely carries modifier flags.
 public enum Keystroke {
+    /// Tag on every event swipekey posts ("SWKY"), so its own taps let them through untouched.
+    public static let marker: Int64 = 0x5357_4B59
     /// Left-hand modifier keys, in the order people press them.
     static let modifiers: [(CGEventFlags, CGKeyCode)] = [
         (.maskControl, 59), (.maskAlternate, 58), (.maskShift, 56), (.maskCommand, 55), (.maskSecondaryFn, 63),
@@ -46,6 +48,17 @@ public enum Keystroke {
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: e.keyCode, keyDown: isDown) else { return nil }
         if e.kind == .modifierDown || e.kind == .modifierUp { event.type = .flagsChanged }
         event.flags = e.flags
+        event.setIntegerValueField(.eventSourceUserData, value: marker)
         return event
+    }
+
+    /// Posts the steps in order at the HID level. A plain post keeps the flags we set; injecting from
+    /// inside a tap (tapPostEvent) does not always, which leaves apps believing modifiers are still held.
+    public static func post(_ steps: [KeystrokeEvent]) throws {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for step in steps {
+            guard let event = cgEvent(step, source: source) else { throw ConfigError("Could not create keyboard event") }
+            event.post(tap: .cghidEventTap)
+        }
     }
 }

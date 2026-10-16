@@ -384,4 +384,9 @@ final class KeystrokeTests: XCTestCase {
         XCTAssertEqual(e?.getIntegerValueField(.keyboardEventKeycode), 55)
         XCTAssertEqual(e?.flags.contains(.maskCommand), true)
     }
+
+    func testPostedEventsCarrySwipekeysMarker() {
+        let e = Keystroke.cgEvent(KeystrokeEvent(kind: .keyDown, keyCode: 49, flags: []), source: nil)
+        XCTAssertEqual(e?.getIntegerValueField(.eventSourceUserData), Keystroke.marker)
+    }
 }
