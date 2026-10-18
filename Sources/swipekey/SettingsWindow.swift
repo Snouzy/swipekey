@@ -57,10 +57,23 @@ enum Theme {
 }
 
 enum SettingsTab: CaseIterable {
-    case bindings, general
+    case bindings, sensitivity, general
 
-    var title: String { self == .bindings ? "Bindings" : "General" }
-    var icon: String { self == .bindings ? "hand.draw" : "gearshape" }
+    var title: String {
+        switch self {
+        case .bindings: return "Bindings"
+        case .sensitivity: return "Sensitivity"
+        case .general: return "General"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .bindings: return "hand.draw"
+        case .sensitivity: return "slider.horizontal.3"
+        case .general: return "gearshape"
+        }
+    }
 }
 
 struct SettingsView: View {
@@ -74,7 +87,7 @@ struct SettingsView: View {
                 ForEach(SettingsTab.allCases, id: \.self) { item in
                     Button { tab = item } label: {
                         VStack(spacing: 4) {
-                            Image(systemName: item.icon).font(.system(size: 18))
+                            Image(systemName: item.icon).font(.system(size: 18)).frame(height: 22)
                             Text(item.title).font(.system(size: 12, weight: .medium))
                         }
                         .frame(minWidth: 64)
@@ -95,6 +108,7 @@ struct SettingsView: View {
             Group {
                 switch tab {
                 case .bindings: BindingsView(store: store)
+                case .sensitivity: SensitivityView(store: store)
                 case .general: GeneralView(store: store)
                 }
             }
@@ -133,7 +147,7 @@ struct GeneralView: View {
                 ForEach(store.editorChoices, id: \.self) { Text($0).tag($0) }
             }
             HStack {
-                Text("Thresholds, scroll blocking and key remaps live in config.json.")
+                Text("Scroll blocking and key remaps live in config.json.")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open config.json") { attempt { try store.openInEditor() } }

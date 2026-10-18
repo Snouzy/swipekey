@@ -36,6 +36,14 @@ struct Draft {
         holding = Set(binding.holding.map(Self.canonical))
     }
 
+    /// Takes a gesture done on the trackpad.
+    mutating func record(_ gesture: SwipeKeyCore.Gesture) {
+        switch gesture {
+        case let .swipe(fingers, direction): (kind, self.fingers, self.direction) = (.swipe, fingers, direction)
+        case let .pinch(fingers, direction): (kind, self.fingers, pinch) = (.pinch, fingers, direction)
+        }
+    }
+
     var gesture: SwipeKeyCore.Gesture? {
         switch kind {
         case .swipe: return direction.map { .swipe(fingers: fingers, direction: $0) }
@@ -73,6 +81,7 @@ struct BindingEditor: View {
     let index: Int?
     @State var draft: Draft
     @State private var step = 1
+    @State private var pickByHand = false
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
 
@@ -138,7 +147,39 @@ struct BindingEditor: View {
     // MARK: Step 1, gesture
 
     private var gestureStep: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 16) {
+                LiveTrackpad(lab: store.lab) {
+                    VStack(spacing: 4) {
+                        Text("Do your gesture on the trackpad").font(.headline)
+                        Text("Swipe or pinch, with as many fingers as you like.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+                }
+                .frame(height: 160)
+                if let gesture = draft.gesture {
+                    VStack(spacing: 8) {
+                        Text("Recognized").font(.caption.weight(.semibold)).foregroundStyle(.green)
+                        MiniTrackpad(gesture: gesture).scaleEffect(1.3).frame(width: 125, height: 84)
+                        Text(gesture.description).font(.headline).multilineTextAlignment(.center)
+                    }
+                    .frame(width: 160)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.25), value: draft.gesture)
+            .capturingTouches(store.lab, swipe: store.config.swipeThreshold, pinch: store.config.pinchThreshold)
+            .onAppear { store.lab.onGesture = { draft.record($0) } }
+            .onDisappear { store.lab.onGesture = nil }
+
+            DisclosureGroup("Or pick it by hand", isExpanded: $pickByHand) {
+                manualGesture.padding(.top, 10)
+            }
+        }
+    }
+
+    private var manualGesture: some View {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Picker("Gesture", selection: $draft.kind) {
                     Text("Swipe").tag(Draft.Kind.swipe)
@@ -151,30 +192,14 @@ struct BindingEditor: View {
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 300)
             }
-
-            HStack(alignment: .center, spacing: 28) {
-                if draft.kind == .swipe {
-                    Grid(horizontalSpacing: 6, verticalSpacing: 6) {
-                        GridRow { Color.clear.frame(width: 1, height: 1); arrow(.up); Color.clear.frame(width: 1, height: 1) }
-                        GridRow { arrow(.left); Color.clear.frame(width: 1, height: 1); arrow(.right) }
-                        GridRow { Color.clear.frame(width: 1, height: 1); arrow(.down); Color.clear.frame(width: 1, height: 1) }
-                    }
-                } else {
-                    VStack(spacing: 8) {
-                        pinchButton(.in, "Pinch in", "fingers toward the centre")
-                        pinchButton(.out, "Pinch out", "fingers apart")
-                    }
+            if draft.kind == .swipe {
+                HStack(spacing: 6) {
+                    ForEach([Direction.left, .up, .down, .right], id: \.self) { arrow($0) }
                 }
-                if let gesture = draft.gesture {
-                    VStack(spacing: 8) {
-                        MiniTrackpad(gesture: gesture).scaleEffect(1.4).frame(width: 140, height: 92)
-                        Text(gesture.description).font(.headline)
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Text(draft.kind == .swipe ? "Pick the direction of the swipe." : "Pick a pinch.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
+            } else {
+                HStack(spacing: 8) {
+                    pinchButton(.in, "Pinch in", "fingers toward the centre")
+                    pinchButton(.out, "Pinch out", "fingers apart")
                 }
             }
         }
@@ -184,7 +209,7 @@ struct BindingEditor: View {
         let symbol = ["up": "arrow.up", "down": "arrow.down", "left": "arrow.left", "right": "arrow.right"][direction.rawValue]!
         let selected = draft.direction == direction
         return Button { draft.direction = direction } label: {
-            Image(systemName: symbol).font(.title2.weight(.semibold)).frame(width: 52, height: 52)
+            Image(systemName: symbol).font(.title3.weight(.semibold)).frame(width: 44, height: 40)
         }
         .buttonStyle(ChoiceStyle(selected: selected))
         .accessibilityLabel("Swipe \(direction.rawValue)")
@@ -196,7 +221,7 @@ struct BindingEditor: View {
                 Text(title).font(.headline)
                 Text(detail).font(.caption).opacity(0.8)
             }
-            .frame(width: 190, height: 56)
+            .frame(width: 190, height: 48)
         }
         .buttonStyle(ChoiceStyle(selected: draft.pinch == direction))
     }
@@ -437,29 +462,39 @@ private struct RecorderRepresentable: NSViewRepresentable {
     }
 }
 
-/// Takes keyboard focus on click and turns every key press into a config key name plus modifiers,
-/// including ⌘-shortcuts that would otherwise be key equivalents.
+/// Takes keyboard focus on click and turns every key press into a config key name plus modifiers.
+/// While it has focus it reads the keyboard through an event tap, ahead of macOS: otherwise system
+/// shortcuts like ⌘Space (Spotlight) or ⌘Tab never reach it and can't be recorded.
 final class RecorderView: NSView {
     var onKey: ((String, Set<String>) -> Void)?
     var onModifiers: ((Set<String>) -> Void)?
     var onFocus: ((Bool) -> Void)?
+    private var tap: CFMachPort?
+    private var tapSource: CFRunLoopSource?
 
     override var acceptsFirstResponder: Bool { true }
 
     override func becomeFirstResponder() -> Bool {
+        startTap()
         onFocus?(true)
         return true
     }
 
     override func resignFirstResponder() -> Bool {
+        stopTap()
         onFocus?(false)
         return true
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil { stopTap() }
     }
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
     }
 
+    // Without the tap (no Accessibility permission) keys still arrive the usual way.
     override func keyDown(with event: NSEvent) { record(event) }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -481,6 +516,46 @@ final class RecorderView: NSView {
         onKey?(key, Self.names(event.modifierFlags))
     }
 
+    private func startTap() {
+        guard tap == nil else { return }
+        let mask = CGEventMask((1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue))
+        guard let tap = CGEvent.tapCreate(
+            tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask,
+            callback: { _, type, event, refcon in
+                Unmanaged<RecorderView>.fromOpaque(refcon!).takeUnretainedValue().handleTap(type, event)
+            },
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else { return }
+        let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        self.tap = tap
+        tapSource = source
+        SystemHotKeys.setEnabled(false)
+    }
+
+    private func stopTap() {
+        guard let tap else { return }
+        CGEvent.tapEnable(tap: tap, enable: false)
+        if let tapSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), tapSource, .commonModes) }
+        CFMachPortInvalidate(tap)
+        self.tap = nil
+        tapSource = nil
+        SystemHotKeys.setEnabled(true)
+    }
+
+    /// Swallows every key press while recording (the shortcut is being recorded, not used).
+    private func handleTap(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
+        // Keystrokes swipekey posts itself go through untouched.
+        if event.getIntegerValueField(.eventSourceUserData) == Keystroke.marker { return Unmanaged.passUnretained(event) }
+        if type == .keyDown, let nsEvent = NSEvent(cgEvent: event) { record(nsEvent) }
+        return nil
+    }
+
     private static func names(_ flags: NSEvent.ModifierFlags) -> Set<String> {
         var names: Set<String> = []
         if flags.contains(.control) { names.insert("control") }
@@ -488,6 +563,26 @@ final class RecorderView: NSView {
         if flags.contains(.shift) { names.insert("shift") }
         if flags.contains(.command) { names.insert("cmd") }
         return names
+    }
+}
+
+/// Turns macOS's own shortcuts (⌘Space, ⌘Tab, ⌃Space...) off while a shortcut is being recorded,
+/// as shortcut recorders do. Private CoreGraphics calls, looked up at run time: if they're gone,
+/// recording still works for every other shortcut. The setting belongs to this process, so macOS
+/// restores the shortcuts by itself if swipekey quits or crashes.
+enum SystemHotKeys {
+    private typealias MainConnection = @convention(c) () -> Int32
+    private typealias SetMode = @convention(c) (Int32, Int32) -> Int32
+
+    static func setEnabled(_ enabled: Bool) {
+        guard
+            let handle = dlopen(nil, RTLD_NOW),
+            let connection = dlsym(handle, "CGSMainConnectionID"),
+            let setMode = dlsym(handle, "CGSSetGlobalHotKeyOperatingMode")
+        else { return }
+        let cid = unsafeBitCast(connection, to: MainConnection.self)()
+        // 0: shortcuts on, 1: off.
+        _ = unsafeBitCast(setMode, to: SetMode.self)(cid, enabled ? 0 : 1)
     }
 }
 

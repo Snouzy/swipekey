@@ -43,7 +43,7 @@ Then, once:
 2. **Allow it.** `make permissions` opens System Settings → Privacy & Security → Accessibility and shows the app in Finder: drag `Swipekey.app` into the list.
 3. `make restart`, and swipe.
 
-Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, open the settings window (⌘,), edit and reload the config, open the log, and quit. In the settings window you add, change and delete bindings without touching the JSON: pick the gesture, press the shortcut you want, save, and it applies right away. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
+Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, open the settings window (⌘,), edit and reload the config, open the log, and quit. In the settings window you add, change and delete bindings without touching the JSON: do the gesture on your trackpad (or pick it), press the shortcut you want, even a system one like ⌘Space, save, and it applies right away. The Sensitivity tab has a test area: your fingers show up live, a bar fills toward the threshold, and it tells you whether the swipe would fire, without running anything. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
 
 | Command | What it does |
 |---|---|

@@ -19,6 +19,8 @@ final class ConfigStore: ObservableObject {
     @Published private(set) var config: Config
     let url: URL
     let engine: Engine
+    /// The live trackpad for recording and testing gestures in the settings window.
+    lazy var lab = TouchLab(engine: engine)
     /// Called after `menuBarIcon` changes.
     var onMenuBarIconChange: ((Bool) -> Void)?
 
@@ -54,6 +56,17 @@ final class ConfigStore: ObservableObject {
         try engine.reload(next)
         try ensureFile()
         try Config.update(.bindings, toEncoded: bindings, at: url)
+        config = next
+    }
+
+    func setThresholds(swipe: Double, pinch: Double) throws {
+        var next = config
+        next.swipeThreshold = swipe
+        next.pinchThreshold = pinch
+        try engine.reload(next)
+        try ensureFile()
+        try Config.update(.swipeThreshold, to: swipe, at: url)
+        try Config.update(.pinchThreshold, to: pinch, at: url)
         config = next
     }
 

@@ -31,6 +31,7 @@ public final class Engine {
     private var recognizersByDevice: [UInt: [GestureRecognizer]] = [:]
     private var fingersByDevice: [UInt: Int] = [:]
     private var enabled = true
+    private var captureHandler: ((TouchFrame) -> Void)?
     private let lock = NSLock()
 
     /// Fingers currently pressed on the busiest trackpad (thread-safe). Zero while paused,
@@ -47,6 +48,18 @@ public final class Engine {
             lock.lock(); defer { lock.unlock() }
             enabled = newValue
             // Gestures in progress start over on resume instead of firing halfway through.
+            recognizersByDevice = [:]
+        }
+    }
+
+    /// While set, every frame goes to this handler instead of the recognizers, so no action runs:
+    /// the settings window records and tests gestures with it. Called on a MultitouchSupport
+    /// thread. Thread-safe.
+    public var capture: ((TouchFrame) -> Void)? {
+        get { lock.lock(); defer { lock.unlock() }; return captureHandler }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            captureHandler = newValue
             recognizersByDevice = [:]
         }
     }
@@ -90,6 +103,13 @@ public final class Engine {
     /// Thread-safe: MultitouchSupport delivers each device's frames on its own thread.
     public func handle(_ frame: TouchFrame, device: UInt) {
         lock.lock()
+        if let captureHandler {
+            // Still counted, so a test swipe doesn't scroll the window underneath.
+            fingersByDevice[device] = frame.touches.filter(\.isTouching).count
+            lock.unlock()
+            captureHandler(frame)
+            return
+        }
         guard enabled else {
             lock.unlock()
             return

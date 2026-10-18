@@ -14,6 +14,9 @@ public final class SwipeRecognizer: GestureRecognizer {
     /// The dominant axis must be this many times larger than the other one.
     public var axisRatio: Double
 
+    /// How far the fingers' centroid has moved since they settled, for showing progress.
+    public private(set) var travel: (dx: Double, dy: Double) = (0, 0)
+
     private var fingerCount = 0
     private var origin: (x: Double, y: Double)?
     private var firedThisSession = false
@@ -39,13 +42,16 @@ public final class SwipeRecognizer: GestureRecognizer {
         if active.count != fingerCount {
             fingerCount = active.count
             origin = centroid
+            travel = (0, 0)
             return []
         }
 
-        guard !firedThisSession, fingerCount >= 2, let origin else { return [] }
-
+        guard let origin else { return [] }
         let dx = centroid.x - origin.x
         let dy = centroid.y - origin.y
+        travel = (dx, dy)
+        guard !firedThisSession, fingerCount >= 2 else { return [] }
+
         let direction: Direction
         if abs(dy) >= threshold, abs(dy) >= abs(dx) * axisRatio {
             direction = dy > 0 ? .up : .down
@@ -62,6 +68,7 @@ public final class SwipeRecognizer: GestureRecognizer {
     private func reset() {
         fingerCount = 0
         origin = nil
+        travel = (0, 0)
         firedThisSession = false
     }
 }
@@ -74,6 +81,9 @@ public final class PinchRecognizer: GestureRecognizer {
     /// The spread change must be this many times larger than the centroid's travel, so a swipe
     /// whose fingers drift together doesn't count as a pinch.
     public var dominance: Double
+
+    /// How much the fingers' spread has changed since they settled (negative: closing in).
+    public private(set) var spreadChange: Double = 0
 
     private var fingerCount = 0
     private var origin: (x: Double, y: Double, spread: Double)?
@@ -100,12 +110,15 @@ public final class PinchRecognizer: GestureRecognizer {
         if active.count != fingerCount {
             fingerCount = active.count
             origin = (cx, cy, spread)
+            spreadChange = 0
             return []
         }
 
-        guard !firedThisSession, fingerCount >= 2, let origin else { return [] }
-
+        guard let origin else { return [] }
         let change = spread - origin.spread
+        spreadChange = change
+        guard !firedThisSession, fingerCount >= 2 else { return [] }
+
         let travel = hypot(cx - origin.x, cy - origin.y)
         guard abs(change) >= threshold, abs(change) >= travel * dominance else { return [] }
 
@@ -116,6 +129,7 @@ public final class PinchRecognizer: GestureRecognizer {
     private func reset() {
         fingerCount = 0
         origin = nil
+        spreadChange = 0
         firedThisSession = false
     }
 }

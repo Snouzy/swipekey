@@ -436,6 +436,54 @@ final class SettingsWindowSupportTests: XCTestCase {
     }
 }
 
+final class CaptureTests: XCTestCase {
+    private func three(dy: Double) -> TouchFrame {
+        TouchFrame(touches: (0..<3).map { Touch(x: 0.3 + Double($0) * 0.1, y: 0.3 + dy, identifier: $0) }, timestamp: dy)
+    }
+
+    func testCaptureGetsTheFramesAndRunsNoAction() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        let fired = expectation(description: "gesture")
+        fired.isInverted = true
+        engine.onGesture = { _ in fired.fulfill() }
+        var frames = 0
+        engine.capture = { _ in frames += 1 }
+        engine.handle(three(dy: 0), device: 1)
+        engine.handle(three(dy: 0.3), device: 1)
+        XCTAssertEqual(frames, 2)
+        XCTAssertEqual(engine.activeFingers, 3, "still counted, so scrolling stays blocked while testing")
+        wait(for: [fired], timeout: 0.2)
+    }
+
+    func testGesturesFireAgainOnceCaptureEnds() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        let fired = expectation(description: "gesture")
+        engine.onGesture = { _ in fired.fulfill() }
+        engine.capture = { _ in }
+        engine.capture = nil
+        engine.handle(three(dy: 0), device: 1)
+        engine.handle(three(dy: 0.3), device: 1)
+        wait(for: [fired], timeout: 1)
+    }
+
+    func testSwipeRecognizerReportsItsTravel() {
+        let r = SwipeRecognizer(threshold: 0.5)
+        _ = r.process(three(dy: 0))
+        _ = r.process(three(dy: 0.08))
+        XCTAssertEqual(r.travel.dy, 0.08, accuracy: 1e-9)
+        _ = r.process(TouchFrame(touches: [], timestamp: 1))
+        XCTAssertEqual(r.travel.dy, 0)
+    }
+
+    func testPinchRecognizerReportsItsSpreadChange() {
+        let r = PinchRecognizer(threshold: 0.5)
+        let two = { (gap: Double) in TouchFrame(touches: [Touch(x: 0.5 - gap / 2, y: 0.5, identifier: 0), Touch(x: 0.5 + gap / 2, y: 0.5, identifier: 1)], timestamp: 0) }
+        _ = r.process(two(0.4))
+        _ = r.process(two(0.3))
+        XCTAssertEqual(r.spreadChange, -0.05, accuracy: 1e-9)
+    }
+}
+
 final class BlockScrollConfigTests: XCTestCase {
     func testDefaultsToThreeAndCanBeTurnedOff() throws {
         let plain = #"{"bindings":[]}"#, off = #"{"blockScrollWithFingers":0,"bindings":[]}"#
