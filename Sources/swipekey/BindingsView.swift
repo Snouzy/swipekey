@@ -23,7 +23,7 @@ struct BindingsView: View {
                 }
                 Spacer()
                 Button {
-                    editing = EditorTarget(index: nil)
+                    open(nil)
                 } label: {
                     Label("Add binding", systemImage: "plus")
                 }
@@ -41,7 +41,7 @@ struct BindingsView: View {
                         ForEach(Array(store.config.bindings.enumerated()), id: \.offset) { index, binding in
                             BindingCard(
                                 binding: binding,
-                                edit: { editing = EditorTarget(index: index) },
+                                edit: { open(index) },
                                 delete: { delete(at: index) }
                             )
                         }
@@ -49,13 +49,11 @@ struct BindingsView: View {
                 }
             }
         }
+        // Full height, so the toast sits at the bottom even when the list is short or empty.
+        .frame(maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .bottom) { undoToast }
         .sheet(item: $editing) { target in
-            BindingEditor(
-                store: store,
-                index: target.index,
-                draft: target.index.map { Draft(store.config.bindings[$0]) } ?? Draft()
-            )
+            BindingEditor(store: store, original: target.original, hint: target.index)
         }
         .alert("Swipekey", isPresented: SwiftUI.Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) {}
@@ -82,9 +80,16 @@ struct BindingsView: View {
         }
     }
 
+    /// Opens the editor on a copy of the binding: the list can change under it (file re-read).
+    private func open(_ index: Int?) {
+        // An undo after other edits could bring back a binding the user replaced since.
+        undoTimer?.invalidate()
+        undo = nil
+        editing = EditorTarget(index: index, original: index.map { store.config.bindings[$0] })
+    }
+
     private func delete(at index: Int) {
-        var bindings = store.config.bindings
-        let removed = bindings.remove(at: index)
+        guard let (bindings, removed) = BindingEdits.delete(at: index, in: store.config.bindings) else { return }
         do {
             try store.setBindings(bindings)
             withAnimation { undo = (removed, index) }
@@ -97,9 +102,8 @@ struct BindingsView: View {
 
     private func restore() {
         guard let undo else { return }
-        var bindings = store.config.bindings
-        bindings.insert(undo.binding, at: min(undo.index, bindings.count))
-        do { try store.setBindings(bindings) } catch { self.error = "\(error)" }
+        do { try store.setBindings(BindingEdits.restore(undo.binding, at: undo.index, in: store.config.bindings)) } catch { self.error = "\(error)" }
+        undoTimer?.invalidate()
         withAnimation { self.undo = nil }
     }
 }
@@ -108,12 +112,14 @@ struct BindingsView: View {
 struct EditorTarget: Identifiable {
     let id = UUID()
     let index: Int?
+    let original: KeyBinding?
 }
 
 struct BindingCard: View {
     let binding: KeyBinding
-    let edit: () -> Void
-    let delete: () -> Void
+    /// Nil on a card that only shows the binding (the editor's review): no buttons then.
+    var edit: (() -> Void)?
+    var delete: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 16) {
@@ -129,16 +135,18 @@ struct BindingCard: View {
             Image(systemName: "arrow.right").foregroundStyle(.secondary).accessibilityHidden(true)
             ActionView(action: binding.action)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 2) {
-                iconButton("pencil", "Edit \(binding.gesture.description)", edit)
-                iconButton("trash", "Delete \(binding.gesture.description)", delete)
+            if let edit, let delete {
+                HStack(spacing: 2) {
+                    iconButton("pencil", "Edit \(binding.gesture.description)", edit)
+                    iconButton("trash", "Delete \(binding.gesture.description)", delete)
+                }
             }
         }
         .padding(.vertical, 12).padding(.leading, 14).padding(.trailing, 10)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.cardBorder))
         .contentShape(Rectangle())
-        .onTapGesture(count: 2, perform: edit)
+        .onTapGesture(count: 2) { edit?() }
     }
 
     private func iconButton(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
@@ -227,8 +235,10 @@ struct MiniTrackpad: View {
             case .left: (-18 * travel, 0)
             case .right: (18 * travel, 0)
             }
+            // Tighter with many fingers, so a 5-finger sideways swipe stays on the pad.
+            let spacing = min(15, 44 / Double(max(fingers - 1, 1)))
             return (0..<fingers).map { i in
-                (cx + (Double(i) - Double(fingers - 1) / 2) * 15 + dx, cy + dy, alpha)
+                (cx + (Double(i) - Double(fingers - 1) / 2) * spacing + dx, cy + dy, alpha)
             }
         case let .pinch(fingers, direction):
             // Fingers on a circle around the centre: the radius shrinks (in) or grows (out).
@@ -253,8 +263,5 @@ enum Modifiers {
         return byFlag.filter { flags.contains($0.0) }.map(\.1)
     }
 
-    /// Canonical names in keyboard order.
-    static func ordered(_ names: Set<String>) -> [String] {
-        all.map(\.name).filter(names.contains)
-    }
+    static func ordered(_ names: Set<String>) -> [String] { KeyCodes.orderedModifiers(names) }
 }

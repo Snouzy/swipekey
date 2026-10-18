@@ -28,6 +28,10 @@ final class SettingsWindow {
             window.contentViewController = controller
             window.setContentSize(NSSize(width: 720, height: 580))
             window.center()
+            // Back from editing config.json by hand: show what's in the file now.
+            NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                try? self?.store.refreshFromDisk()
+            }
             self.window = window
         }
         // A background app has to bring itself forward, or the window opens behind the current app.
@@ -133,27 +137,28 @@ struct GeneralView: View {
     @State private var error: String?
 
     var body: some View {
-        Form {
+        VStack(alignment: .leading, spacing: 14) {
             Text("General").font(.system(size: 20, weight: .bold))
-            Toggle("Show the icon in the menu bar", isOn: Binding(
-                get: { store.config.menuBarIcon },
-                set: { shown in attempt { try store.setMenuBarIcon(shown) } }
-            ))
-            Picker("Open config with", selection: Binding(
-                get: { store.config.editor ?? "" },
-                set: { name in attempt { try store.setEditor(name.isEmpty ? nil : name) } }
-            )) {
-                Text("Default app").tag("")
-                ForEach(store.editorChoices, id: \.self) { Text($0).tag($0) }
-            }
-            HStack {
-                Text("Scroll blocking and key remaps live in config.json.")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Open config.json") { attempt { try store.openInEditor() } }
+            Form {
+                Toggle("Show the icon in the menu bar", isOn: Binding(
+                    get: { store.config.menuBarIcon },
+                    set: { shown in attempt { try store.setMenuBarIcon(shown) } }
+                ))
+                Picker("Open config with", selection: Binding(
+                    get: { store.config.editor ?? "" },
+                    set: { name in attempt { try store.setEditor(name.isEmpty ? nil : name) } }
+                )) {
+                    Text("Default app").tag("")
+                    ForEach(store.editorChoices, id: \.self) { Text($0).tag($0) }
+                }
+                HStack {
+                    Text("Scroll blocking and key remaps live in config.json.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open config.json") { attempt { try store.openInEditor() } }
+                }
             }
         }
-        .padding(8)
         .alert("Swipekey", isPresented: SwiftUI.Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {

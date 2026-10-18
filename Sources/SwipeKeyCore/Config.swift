@@ -97,8 +97,20 @@ public struct Config: Codable, Equatable {
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
         guard var settings = object as? [String: Any] else { throw ConfigError("\(url.path) is not a JSON object") }
         settings[key.rawValue] = value
-        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        let data = try JSONSerialization.data(withJSONObject: shortestNumbers(settings), options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         try (data + Data("\n".utf8)).write(to: url, options: .atomic)
+    }
+
+    /// JSONSerialization writes doubles with 17 digits (0.09 → 0.089999999999999997). As decimals
+    /// they come out the way a person writes them; Swift's description is the shortest exact form.
+    private static func shortestNumbers(_ value: Any) -> Any {
+        switch value {
+        case let dictionary as [String: Any]: return dictionary.mapValues(shortestNumbers)
+        case let array as [Any]: return array.map(shortestNumbers)
+        case let number as NSNumber where CFGetTypeID(number) != CFBooleanGetTypeID() && CFNumberIsFloatType(number):
+            return NSDecimalNumber(string: String(describing: number.doubleValue))
+        default: return value
+        }
     }
 
     /// Same as `update(_:to:at:)` for a Codable value, e.g. the whole `bindings` list.

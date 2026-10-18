@@ -45,11 +45,29 @@ final class ConfigStore: ObservableObject {
     func refreshFromDisk() throws {
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         let fresh = try Config.load(from: url)
+        // Unchanged (the usual case on every focus): no reload, no redraw.
+        guard fresh != config else { return }
         try engine.reload(fresh)
         config = fresh
     }
 
+    /// Before writing: if the file changed outside the window (edited by hand while it was open),
+    /// show that version and refuse the change, rather than overwrite the user's edit with a list
+    /// computed from the old one. A file that no longer parses is left alone too.
+    private func checkForOutsideEdits() throws {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let onDisk: Config
+        do { onDisk = try Config.load(from: url) } catch {
+            throw ConfigError("config.json can't be read right now, so nothing was saved: \(error)")
+        }
+        guard onDisk != config else { return }
+        try engine.reload(onDisk)
+        config = onDisk
+        throw ConfigError("config.json was changed outside this window. The window now shows that version: make your change again.")
+    }
+
     func setBindings(_ bindings: [Binding]) throws {
+        try checkForOutsideEdits()
         var next = config
         next.bindings = bindings
         // Check before writing: a binding the engine refuses never reaches the file.
@@ -60,23 +78,28 @@ final class ConfigStore: ObservableObject {
     }
 
     func setThresholds(swipe: Double, pinch: Double) throws {
+        try checkForOutsideEdits()
         var next = config
         next.swipeThreshold = swipe
         next.pinchThreshold = pinch
+        guard next != config else { return }
         try engine.reload(next)
         try ensureFile()
-        try Config.update(.swipeThreshold, to: swipe, at: url)
-        try Config.update(.pinchThreshold, to: pinch, at: url)
+        // Only the one that moved: the other may not be in the file at all.
+        if swipe != config.swipeThreshold { try Config.update(.swipeThreshold, to: swipe, at: url) }
+        if pinch != config.pinchThreshold { try Config.update(.pinchThreshold, to: pinch, at: url) }
         config = next
     }
 
     func setEditor(_ name: String?) throws {
+        try checkForOutsideEdits()
         try ensureFile()
         try Config.update(.editor, to: name, at: url)
         config.editor = name
     }
 
     func setMenuBarIcon(_ shown: Bool) throws {
+        try checkForOutsideEdits()
         try ensureFile()
         try Config.update(.menuBarIcon, to: shown, at: url)
         config.menuBarIcon = shown

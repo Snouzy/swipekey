@@ -611,3 +611,664 @@ final class KeystrokeTests: XCTestCase {
         XCTAssertEqual(e?.getIntegerValueField(.eventSourceUserData), Keystroke.marker)
     }
 }
+
+private let up3 = Gesture.swipe(fingers: 3, direction: .up)
+private let down3 = Gesture.swipe(fingers: 3, direction: .down)
+private let left4 = Gesture.swipe(fingers: 4, direction: .left)
+private let pinchIn2 = Gesture.pinch(fingers: 2, direction: .in)
+private let pinchOut5 = Gesture.pinch(fingers: 5, direction: .out)
+
+/// The bindings list used by the workflow tests: four triggers, one of them held with ⌘.
+private let sample = [
+    Binding(gesture: up3, action: .key("return", modifiers: [])),
+    Binding(gesture: down3, action: .key("w", modifiers: ["cmd"])),
+    Binding(gesture: pinchIn2, action: .shell("open -a Terminal")),
+    Binding(gesture: up3, holding: ["cmd"], action: .key("tab", modifiers: ["control", "shift"])),
+]
+
+private func triggers(_ list: [Binding]) throws -> [Trigger] { try list.map { try $0.trigger() } }
+
+/// What the editor's Next / Save button allows on each step (BindingEditor.canAdvance).
+private func canAdvance(_ draft: BindingDraft, step: Int) -> Bool {
+    switch step {
+    case 1: return draft.gesture != nil
+    case 2: return draft.action != nil && draft.actionError == nil
+    default: return draft.binding != nil
+    }
+}
+
+final class BindingWorkflowTests: XCTestCase {
+    /// Opens the binding at `index`, lets `change` edit the draft, and saves it like the editor does.
+    private func edit(_ index: Int, in list: [Binding], _ change: (inout BindingDraft) -> Void) throws -> [Binding] {
+        var draft = BindingDraft(list[index])
+        change(&draft)
+        let binding = try XCTUnwrap(draft.binding)
+        return BindingEdits.save(binding, editing: index, in: list)
+    }
+
+    func testChangingOnlyTheGesture() throws {
+        let list = try edit(1, in: sample) { $0.record(left4) }
+        XCTAssertEqual(list.count, sample.count)
+        XCTAssertEqual(list[1], Binding(gesture: left4, action: .key("w", modifiers: ["cmd"])))
+        XCTAssertEqual(list[0], sample[0])
+        XCTAssertEqual(Array(list[2...]), Array(sample[2...]))
+    }
+
+    func testChangingOnlyTheAction() throws {
+        let list = try edit(2, in: sample) { $0.isShell = false; $0.key = "f5"; $0.modifiers = ["option"] }
+        XCTAssertEqual(list.count, sample.count)
+        XCTAssertEqual(list[2], Binding(gesture: pinchIn2, action: .key("f5", modifiers: ["option"])))
+        XCTAssertEqual(Array(list[..<2]), Array(sample[..<2]))
+        XCTAssertEqual(list[3], sample[3])
+    }
+
+    func testChangingOnlyTheHeldModifiers() throws {
+        let list = try edit(1, in: sample) { $0.holding = ["shift", "cmd"] }
+        XCTAssertEqual(list.count, sample.count)
+        XCTAssertEqual(list[1], Binding(gesture: down3, holding: ["shift", "cmd"], action: .key("w", modifiers: ["cmd"])))
+        XCTAssertEqual(list[0], sample[0])
+        XCTAssertEqual(Array(list[2...]), Array(sample[2...]))
+    }
+
+    func testChangingThingsAndBackLeavesTheListAsItWas() throws {
+        let list = try edit(1, in: sample) { draft in
+            draft.record(pinchOut5)
+            draft.isShell = true
+            draft.command = "say hi"
+            draft.holding = ["control"]
+            draft.modifiers = []
+            draft.record(down3)
+            draft.isShell = false
+            draft.modifiers = ["cmd"]
+            draft.holding = []
+        }
+        XCTAssertEqual(list, sample)
+    }
+
+    func testSavingWithoutChangesLeavesTheListAsItWas() throws {
+        for index in sample.indices {
+            XCTAssertEqual(try edit(index, in: sample) { _ in }, sample, "binding \(index)")
+        }
+    }
+
+    func testSavingAHandWrittenBindingUnchangedKeepsWhatItDoes() throws {
+        let handWritten = Binding(gesture: up3, holding: ["Command", "ctrl"], action: .key("Return", modifiers: ["fn", "alt", "command", "shift"]))
+        let list = try edit(0, in: [handWritten]) { _ in }
+        XCTAssertEqual(list.count, 1)
+        XCTAssertEqual(try list[0].trigger(), try handWritten.trigger())
+        XCTAssertEqual(list[0].holding, ["control", "cmd"])
+        XCTAssertEqual(list[0].action, .key("Return", modifiers: ["option", "shift", "cmd", "fn"]))
+        let before = try handWritten.action.makeAction() as? KeyPressAction
+        let after = try list[0].action.makeAction() as? KeyPressAction
+        XCTAssertEqual(after?.flags, before?.flags)
+        XCTAssertEqual(after?.key, before?.key)
+    }
+
+    func testEditingOntoTheTriggerOfAnEarlierBindingReplacesIt() throws {
+        let list = try edit(2, in: sample) { $0.record(up3) }
+        XCTAssertEqual(list, [
+            sample[1],
+            Binding(gesture: up3, action: .shell("open -a Terminal")),
+            sample[3],
+        ])
+        XCTAssertEqual(Set(try triggers(list)).count, list.count)
+    }
+
+    func testEditingOntoTheTriggerOfALaterBindingReplacesIt() throws {
+        let list = try edit(0, in: sample) { $0.record(pinchIn2) }
+        XCTAssertEqual(list, [
+            Binding(gesture: pinchIn2, action: .key("return", modifiers: [])),
+            sample[1],
+            sample[3],
+        ])
+        XCTAssertEqual(Set(try triggers(list)).count, list.count)
+    }
+
+    func testEditingTheLastBindingOntoTheFirstsTrigger() throws {
+        let list = try edit(3, in: sample) { $0.holding = [] }
+        XCTAssertEqual(list, [sample[1], sample[2], Binding(gesture: up3, action: sample[3].action)])
+    }
+
+    func testTheEditedBindingIsNotItsOwnClash() {
+        XCTAssertNil(BindingEdits.clash(with: sample[2], editing: 2, in: sample))
+        XCTAssertEqual(BindingEdits.clash(with: sample[2], editing: nil, in: sample), 2)
+        XCTAssertEqual(BindingEdits.clash(with: sample[2], editing: 0, in: sample), 2)
+    }
+
+    func testAddingANewTriggerAppends() {
+        let new = Binding(gesture: left4, action: .key("[", modifiers: ["cmd"]))
+        XCTAssertNil(BindingEdits.clash(with: new, editing: nil, in: sample))
+        XCTAssertEqual(BindingEdits.save(new, editing: nil, in: sample), sample + [new])
+    }
+
+    func testAddingOnAnExistingTriggerReplacesItInPlace() throws {
+        var draft = BindingDraft()
+        draft.record(down3)
+        draft.key = "t"
+        draft.modifiers = ["cmd"]
+        let new = try XCTUnwrap(draft.binding)
+        XCTAssertEqual(BindingEdits.clash(with: new, editing: nil, in: sample), 1)
+        let list = BindingEdits.save(new, editing: nil, in: sample)
+        XCTAssertEqual(list, [sample[0], new, sample[2], sample[3]])
+    }
+
+    func testSameGestureWithOtherHeldModifiersIsNotAClash() {
+        let held = Binding(gesture: down3, holding: ["cmd"], action: .key("q", modifiers: ["cmd"]))
+        XCTAssertNil(BindingEdits.clash(with: held, editing: nil, in: sample))
+        let list = BindingEdits.save(held, editing: nil, in: sample)
+        XCTAssertEqual(list, sample + [held])
+        XCTAssertNil(BindingEdits.clash(with: sample[0], editing: 0, in: sample), "⌘ + swipe up is its own trigger")
+    }
+
+    func testHeldModifiersMatchWhateverTheirOrderOrSpelling() {
+        let list = [Binding(gesture: down3, holding: ["command", "shift"], action: .key("a", modifiers: []))]
+        let new = Binding(gesture: down3, holding: ["shift", "cmd"], action: .key("b", modifiers: []))
+        XCTAssertEqual(BindingEdits.clash(with: new, editing: nil, in: list), 0)
+        XCTAssertEqual(BindingEdits.save(new, editing: nil, in: list), [new])
+    }
+
+    func testSavingIntoAnEmptyList() {
+        XCTAssertNil(BindingEdits.clash(with: sample[0], editing: nil, in: []))
+        XCTAssertEqual(BindingEdits.save(sample[0], editing: nil, in: []), [sample[0]])
+        XCTAssertEqual(BindingEdits.save(sample[0], editing: 0, in: []), [sample[0]])
+    }
+
+    func testEditingAnIndexThatNoLongerExistsSavesAsNew() {
+        let shrunk = Array(sample[..<2])
+        let new = Binding(gesture: left4, action: .key("x", modifiers: []))
+        XCTAssertEqual(BindingEdits.save(new, editing: 3, in: shrunk), shrunk + [new])
+        XCTAssertEqual(BindingEdits.save(new, editing: -1, in: shrunk), shrunk + [new])
+        let onFirst = Binding(gesture: up3, action: .key("x", modifiers: []))
+        XCTAssertEqual(BindingEdits.save(onFirst, editing: 3, in: shrunk), [onFirst, shrunk[1]])
+    }
+
+    /// Hand-written configs may bind a trigger twice (both actions run). Saving through the editor
+    /// promises one binding per trigger.
+    func testSavingLeavesOneBindingPerTriggerEvenWithHandWrittenDuplicates() throws {
+        let twice = [
+            Binding(gesture: up3, action: .key("a", modifiers: [])),
+            Binding(gesture: up3, action: .key("b", modifiers: [])),
+            Binding(gesture: up3, action: .key("c", modifiers: [])),
+        ]
+        let list = try edit(0, in: twice) { $0.key = "z" }
+        XCTAssertEqual(list, [Binding(gesture: up3, action: .key("z", modifiers: []))])
+    }
+
+    func testDeleteThenUndoPutsItBackAtItsPlace() throws {
+        for index in sample.indices {
+            let (list, removed) = try XCTUnwrap(BindingEdits.delete(at: index, in: sample))
+            XCTAssertEqual(removed, sample[index])
+            XCTAssertEqual(list.count, sample.count - 1)
+            XCTAssertFalse(list.contains(removed))
+            XCTAssertEqual(BindingEdits.restore(removed, at: index, in: list), sample, "index \(index)")
+        }
+    }
+
+    func testDeleteTheOnlyBindingThenUndo() throws {
+        let (list, removed) = try XCTUnwrap(BindingEdits.delete(at: 0, in: [sample[2]]))
+        XCTAssertEqual(list, [])
+        XCTAssertEqual(BindingEdits.restore(removed, at: 0, in: list), [sample[2]])
+    }
+
+    func testDeleteOutOfRangeDoesNothing() {
+        XCTAssertNil(BindingEdits.delete(at: sample.count, in: sample))
+        XCTAssertNil(BindingEdits.delete(at: -1, in: sample))
+        XCTAssertNil(BindingEdits.delete(at: 0, in: []))
+    }
+
+    func testDeleteThenAddOnTheSameTriggerThenUndoKeepsOne() throws {
+        let (afterDelete, removed) = try XCTUnwrap(BindingEdits.delete(at: 1, in: sample))
+        let added = Binding(gesture: down3, action: .shell("say added"))
+        let afterAdd = BindingEdits.save(added, editing: nil, in: afterDelete)
+        XCTAssertEqual(afterAdd, [sample[0], sample[2], sample[3], added])
+        let restored = BindingEdits.restore(removed, at: 1, in: afterAdd)
+        XCTAssertEqual(restored.filter { $0.gesture == down3 && $0.holding.isEmpty }, [removed])
+        XCTAssertEqual(restored.count, sample.count)
+        XCTAssertEqual(Set(try triggers(restored)).count, restored.count)
+    }
+
+    func testTwoDeletesThenUndoOfTheLastOne() throws {
+        let (once, first) = try XCTUnwrap(BindingEdits.delete(at: 0, in: sample))
+        let (twice, second) = try XCTUnwrap(BindingEdits.delete(at: 2, in: once))
+        XCTAssertEqual(first, sample[0])
+        XCTAssertEqual(second, sample[3])
+        XCTAssertEqual(BindingEdits.restore(second, at: 2, in: twice), [sample[1], sample[2], sample[3]])
+
+        let (again, sameIndex) = try XCTUnwrap(BindingEdits.delete(at: 0, in: once))
+        XCTAssertEqual(sameIndex, sample[1])
+        XCTAssertEqual(BindingEdits.restore(sameIndex, at: 0, in: again), once)
+    }
+
+    func testUndoAfterTheListShrankGoesAtTheEnd() throws {
+        let (list, removed) = try XCTUnwrap(BindingEdits.delete(at: 3, in: sample))
+        let shrunk = Array(list[..<1])
+        XCTAssertEqual(BindingEdits.restore(removed, at: 3, in: shrunk), [sample[0], sample[3]])
+        XCTAssertEqual(BindingEdits.restore(removed, at: -5, in: shrunk), [sample[3], sample[0]])
+    }
+
+    /// Undo puts the deleted binding back in place of whatever now answers to its trigger, even a
+    /// binding that existed before the delete and was only edited onto that trigger since: that
+    /// binding is gone after the undo.
+    func testUndoAfterEditingAnotherBindingOntoTheDeletedTrigger() throws {
+        let (afterDelete, removed) = try XCTUnwrap(BindingEdits.delete(at: 1, in: sample))
+        let edited = try edit(0, in: afterDelete) { $0.record(down3) }
+        XCTAssertEqual(edited[0], Binding(gesture: down3, action: .key("return", modifiers: [])))
+        let restored = BindingEdits.restore(removed, at: 1, in: edited)
+        XCTAssertEqual(restored, [sample[1], sample[2], sample[3]])
+    }
+
+    func testAnEditorLeftOpenWhileTheListShrankDoesNotOverwriteAnotherBinding() throws {
+        var draft = BindingDraft(sample[1])
+        draft.key = "t"
+        let shrunk = Array(sample.dropFirst())
+        let list = BindingEdits.save(try XCTUnwrap(draft.binding), replacing: sample[1], near: 1, in: shrunk)
+        XCTAssertEqual(list.filter { $0.gesture == down3 }.count, 1)
+        XCTAssertTrue(list.contains(sample[2]), "the pinch was never edited and must survive")
+    }
+}
+
+final class BindingDraftTests: XCTestCase {
+    func testANewDraftIsIncomplete() {
+        let draft = BindingDraft()
+        XCTAssertNil(draft.gesture)
+        XCTAssertNil(draft.action)
+        XCTAssertNil(draft.actionError)
+        XCTAssertNil(draft.binding)
+        XCTAssertFalse(canAdvance(draft, step: 1))
+    }
+
+    func testStepsUnlockAsTheDraftFillsIn() {
+        var draft = BindingDraft()
+        draft.record(up3)
+        XCTAssertTrue(canAdvance(draft, step: 1))
+        XCTAssertFalse(canAdvance(draft, step: 2))
+        draft.key = "return"
+        XCTAssertTrue(canAdvance(draft, step: 2))
+        XCTAssertTrue(canAdvance(draft, step: 3))
+        XCTAssertEqual(draft.binding, Binding(gesture: up3, action: .key("return", modifiers: [])))
+    }
+
+    func testEveryGestureShapeRoundTrips() {
+        for fingers in 2...5 {
+            let gestures = Direction.allCases.map { Gesture.swipe(fingers: fingers, direction: $0) }
+                + PinchDirection.allCases.map { Gesture.pinch(fingers: fingers, direction: $0) }
+            for gesture in gestures {
+                let binding = Binding(gesture: gesture, action: .key("a", modifiers: []))
+                XCTAssertEqual(BindingDraft(binding).binding, binding, "\(gesture)")
+            }
+        }
+    }
+
+    func testKeysWithModifiersRoundTrip() {
+        let actions: [ActionSpec] = [
+            .key("return", modifiers: []),
+            .key("@", modifiers: ["cmd"]),
+            .key("tab", modifiers: ["control", "shift"]),
+            .key("f5", modifiers: ["control", "option", "shift", "cmd", "fn"]),
+            .key("left", modifiers: ["fn"]),
+            .key("36", modifiers: ["option"]),
+        ]
+        for action in actions {
+            let binding = Binding(gesture: down3, action: action)
+            XCTAssertEqual(BindingDraft(binding).binding, binding, "\(action)")
+        }
+    }
+
+    func testHandWrittenModifierNamesAreSavedUnderOneName() throws {
+        let binding = Binding(gesture: down3, holding: ["opt", "CMD"], action: .key("w", modifiers: ["command", "alt", "ctrl", "opt", "fn", "Shift"]))
+        let draft = BindingDraft(binding)
+        XCTAssertEqual(draft.modifiers, ["cmd", "option", "control", "fn", "shift"])
+        XCTAssertEqual(draft.holding, ["option", "cmd"])
+        let saved = try XCTUnwrap(draft.binding)
+        XCTAssertEqual(saved.action, .key("w", modifiers: ["control", "option", "shift", "cmd", "fn"]))
+        XCTAssertEqual(saved.holding, ["option", "cmd"])
+        XCTAssertEqual(try saved.trigger(), try binding.trigger())
+    }
+
+    func testCanonicalModifierNames() {
+        let expected = ["command": "cmd", "cmd": "cmd", "Command": "cmd", "alt": "option", "opt": "option", "option": "option",
+                        "ctrl": "control", "control": "control", "shift": "shift", "fn": "fn", "FN": "fn", "hyper": "hyper"]
+        for (name, canonical) in expected {
+            XCTAssertEqual(KeyCodes.canonicalModifier(name), canonical, name)
+        }
+    }
+
+    func testModifiersAreOrderedLikeAKeyboardAndUnknownNamesKept() {
+        XCTAssertEqual(KeyCodes.orderedModifiers(["fn", "cmd", "shift", "option", "control"]), ["control", "option", "shift", "cmd", "fn"])
+        XCTAssertEqual(KeyCodes.orderedModifiers(["zeta", "cmd", "alpha"]), ["cmd", "alpha", "zeta"])
+        XCTAssertEqual(KeyCodes.orderedModifiers([]), [])
+    }
+
+    func testAnUnknownModifierIsAnError() {
+        var draft = BindingDraft(Binding(gesture: up3, action: .key("a", modifiers: ["hyper"])))
+        XCTAssertEqual(draft.modifiers, ["hyper"])
+        XCTAssertNotNil(draft.actionError)
+        XCTAssertNil(draft.binding)
+        XCTAssertFalse(canAdvance(draft, step: 2))
+        draft.modifiers = ["cmd"]
+        XCTAssertNil(draft.actionError)
+        XCTAssertNotNil(draft.binding)
+    }
+
+    func testShellCommandsRoundTripTrimmed() throws {
+        let binding = Binding(gesture: pinchOut5, holding: ["shift"], action: .shell("open -a Terminal"))
+        XCTAssertEqual(BindingDraft(binding).binding, binding)
+
+        var draft = BindingDraft()
+        draft.record(up3)
+        draft.isShell = true
+        draft.command = "  \n say hi \t\n"
+        XCTAssertEqual(draft.action, .shell("say hi"))
+        XCTAssertNil(draft.actionError)
+        XCTAssertEqual(draft.binding?.action, .shell("say hi"))
+    }
+
+    func testABlankCommandIsIncomplete() {
+        var draft = BindingDraft()
+        draft.record(up3)
+        draft.isShell = true
+        for command in ["", "   ", "\n\t "] {
+            draft.command = command
+            XCTAssertNil(draft.action, "\"\(command)\"")
+            XCTAssertNil(draft.actionError)
+            XCTAssertNil(draft.binding)
+            XCTAssertFalse(canAdvance(draft, step: 2))
+        }
+    }
+
+    func testHeldModifiersRoundTrip() {
+        for holding in [["cmd"], ["control", "option", "shift", "cmd"], ["shift"]] {
+            let binding = Binding(gesture: left4, holding: holding, action: .key("a", modifiers: []))
+            XCTAssertEqual(BindingDraft(binding).binding, binding, "\(holding)")
+        }
+    }
+
+    func testInvalidKeyTextsBlockTheActionStep() {
+        var draft = BindingDraft()
+        draft.record(up3)
+        for key in ["cmd+w", "", "nope-key", "page up", "70000", "-1", "⌘w"] {
+            draft.key = key
+            XCTAssertNotNil(draft.action, key)
+            XCTAssertNotNil(draft.actionError, key)
+            XCTAssertNil(draft.binding, key)
+            XCTAssertFalse(canAdvance(draft, step: 2), key)
+        }
+    }
+
+    func testValidKeyTexts() throws {
+        var draft = BindingDraft()
+        draft.record(up3)
+        for key in ["36", "0", "65535", "@", "a", "[", "é", "return", "f12", "esc", "Return", "F5"] {
+            draft.key = key
+            XCTAssertNil(draft.actionError, key)
+            XCTAssertEqual(draft.binding?.action, .key(key, modifiers: []), key)
+            XCTAssertTrue(canAdvance(draft, step: 2), key)
+        }
+    }
+
+    func testAnUppercaseKeyNameIsKeptAsWrittenAndPressesTheSameKey() throws {
+        let upper = try XCTUnwrap(BindingDraft(Binding(gesture: up3, action: .key("Return", modifiers: []))).binding)
+        XCTAssertEqual(upper.action, .key("Return", modifiers: []))
+        let pressed = try upper.action.makeAction() as? KeyPressAction
+        XCTAssertEqual(pressed?.key, .code(36))
+        XCTAssertEqual(upper.action.keyCaps, ["Return"])
+    }
+
+    func testSwitchingFromSwipeToPinchClearsTheGestureUntilADirectionIsPicked() {
+        var draft = BindingDraft()
+        draft.record(up3)
+        draft.kind = .pinch
+        XCTAssertNil(draft.gesture)
+        XCTAssertNil(draft.binding)
+        XCTAssertFalse(canAdvance(draft, step: 1))
+        draft.pinch = .out
+        XCTAssertEqual(draft.gesture, .pinch(fingers: 3, direction: .out))
+        draft.kind = .swipe
+        XCTAssertEqual(draft.gesture, up3, "the swipe direction picked before is kept")
+    }
+
+    func testOpeningAPinchThenSwitchingToSwipeNeedsADirection() {
+        var draft = BindingDraft(Binding(gesture: pinchIn2, action: .key("a", modifiers: [])))
+        draft.kind = .swipe
+        XCTAssertNil(draft.gesture)
+        draft.direction = .right
+        XCTAssertEqual(draft.gesture, .swipe(fingers: 2, direction: .right))
+    }
+
+    func testRecordingReplacesTheGestureAndKeepsTheOtherKindsDirection() {
+        var draft = BindingDraft()
+        draft.record(up3)
+        draft.record(pinchIn2)
+        XCTAssertEqual(draft.gesture, pinchIn2)
+        draft.kind = .swipe
+        XCTAssertEqual(draft.gesture, .swipe(fingers: 2, direction: .up), "a swipe the user never did, but its arrow shows selected")
+    }
+
+    func testChangingFingersKeepsTheDirection() {
+        var draft = BindingDraft(Binding(gesture: up3, action: .key("a", modifiers: [])))
+        for fingers in 2...5 {
+            draft.fingers = fingers
+            XCTAssertEqual(draft.gesture, .swipe(fingers: fingers, direction: .up))
+        }
+    }
+
+    func testSwitchingActionKindKeepsWhatWasTypedInEach() {
+        var draft = BindingDraft(Binding(gesture: up3, action: .key("w", modifiers: ["cmd"])))
+        draft.isShell = true
+        XCTAssertNil(draft.action)
+        draft.command = "ls"
+        XCTAssertEqual(draft.action, .shell("ls"))
+        draft.isShell = false
+        XCTAssertEqual(draft.action, .key("w", modifiers: ["cmd"]))
+        draft.isShell = true
+        XCTAssertEqual(draft.action, .shell("ls"))
+    }
+
+    func testAnOpenedDraftMatchesWhatTheEditorShows() {
+        let draft = BindingDraft(Binding(gesture: pinchOut5, holding: ["cmd"], action: .shell("ls")))
+        XCTAssertEqual(draft.kind, .pinch)
+        XCTAssertEqual(draft.fingers, 5)
+        XCTAssertEqual(draft.pinch, .out)
+        XCTAssertNil(draft.direction)
+        XCTAssertTrue(draft.isShell)
+        XCTAssertEqual(draft.command, "ls")
+        XCTAssertNil(draft.key)
+        XCTAssertEqual(draft.holding, ["cmd"])
+    }
+
+    /// The editor's chips only offer control, option, shift and cmd, but a draft holding something
+    /// else is still turned into a binding: the engine is what refuses it.
+    func testHoldingTheEngineRefusesStillMakesABinding() throws {
+        for holding: Set<String> in [["fn"], ["hyper"]] {
+            var draft = BindingDraft()
+            draft.record(up3)
+            draft.key = "a"
+            draft.holding = holding
+            let binding = try XCTUnwrap(draft.binding)
+            let engine = try Engine(config: Config(bindings: [sample[0]]))
+            XCTAssertThrowsError(try engine.reload(Config(bindings: [binding])), "\(holding)")
+            XCTAssertEqual(engine.actions(for: try sample[0].trigger()).count, 1)
+        }
+    }
+
+    func testABindingWithAnInvalidHoldingNeverClashes() {
+        let odd = Binding(gesture: up3, holding: ["hyper"], action: .key("a", modifiers: []))
+        XCTAssertNil(BindingEdits.clash(with: odd, editing: nil, in: sample))
+        XCTAssertNil(BindingEdits.clash(with: sample[0], editing: nil, in: [odd]))
+        XCTAssertEqual(BindingEdits.save(odd, editing: nil, in: sample), sample + [odd])
+    }
+}
+
+/// The settings window's save path (ConfigStore.setBindings): check with the engine, then write
+/// only the bindings key of the file.
+final class BindingFileWorkflowTests: XCTestCase {
+    private var url: URL!
+    private var config: Config!
+    private var engine: Engine!
+
+    private let original = #"""
+    {
+      "swipeThreshold": 0.09,
+      "pinchThreshold": 0.07,
+      "blockScrollWithFingers": 4,
+      "editor": "Zed",
+      "menuBarIcon": false,
+      "remaps": [ { "from": { "key": "space", "app": "Logi Options+" }, "to": { "key": "space", "modifiers": ["control", "option"] } } ],
+      "bindings": [
+        { "gesture": { "type": "swipe", "fingers": 3, "direction": "up" }, "action": { "type": "key", "key": "return" } },
+        { "gesture": { "type": "swipe", "fingers": 3, "direction": "down" }, "action": { "type": "key", "key": "w", "modifiers": ["command", "fn"] } },
+        { "gesture": { "type": "pinch", "fingers": 2, "direction": "in" }, "holding": ["cmd"], "action": { "type": "shell", "command": "open -a Terminal" } }
+      ]
+    }
+    """#
+
+    override func setUpWithError() throws {
+        url = FileManager.default.temporaryDirectory.appendingPathComponent("swipekey-\(UUID()).json")
+        try Data(original.utf8).write(to: url)
+        config = try Config.load(from: url)
+        engine = try Engine(config: config)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private func setBindings(_ bindings: [Binding]) throws {
+        var next = config!
+        next.bindings = bindings
+        try engine.reload(next)
+        try Config.update(.bindings, toEncoded: bindings, at: url)
+        config = next
+    }
+
+    private func fileObject() throws -> [String: Any] {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    }
+
+    private func assertOtherKeysUntouched(file: StaticString = #filePath, line: UInt = #line) throws {
+        let start = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(original.utf8)) as? [String: Any])
+        XCTAssertEqual(Set(try fileObject().keys), Set(start.keys), file: file, line: line)
+        var expected = try JSONDecoder().decode(Config.self, from: Data(original.utf8))
+        let now = try Config.load(from: url)
+        expected.bindings = now.bindings
+        XCTAssertEqual(now, expected, file: file, line: line)
+    }
+
+    private func assertSavedAndLive(_ expected: [Binding], file: StaticString = #filePath, line: UInt = #line) throws {
+        XCTAssertEqual(try Config.load(from: url).bindings, expected, file: file, line: line)
+        XCTAssertEqual(config.bindings, expected, file: file, line: line)
+        for binding in expected {
+            XCTAssertEqual(engine.actions(for: try binding.trigger()).count, 1, "\(binding.gesture)", file: file, line: line)
+        }
+        try assertOtherKeysUntouched(file: file, line: line)
+    }
+
+    private func liveKey(_ gesture: Gesture, held: CGEventFlags = []) -> KeyPressAction? {
+        engine.actions(for: Trigger(gesture: gesture, held: held)).first as? KeyPressAction
+    }
+
+    func testASequenceOfEditsReachesTheFileAndTheEngine() throws {
+        var draft = BindingDraft(config.bindings[0])
+        draft.record(left4)
+        var list = BindingEdits.save(try XCTUnwrap(draft.binding), editing: 0, in: config.bindings)
+        try setBindings(list)
+        try assertSavedAndLive(list)
+        XCTAssertTrue(engine.actions(for: Trigger(gesture: up3, held: [])).isEmpty)
+        XCTAssertEqual(liveKey(left4)?.key, .code(36))
+
+        draft = BindingDraft()
+        draft.record(up3)
+        draft.key = "tab"
+        draft.modifiers = ["control"]
+        draft.holding = ["shift"]
+        list = BindingEdits.save(try XCTUnwrap(draft.binding), editing: nil, in: list)
+        try setBindings(list)
+        try assertSavedAndLive(list)
+        XCTAssertEqual(list.count, 4)
+        XCTAssertEqual(liveKey(up3, held: .maskShift)?.flags, .maskControl)
+
+        let (afterDelete, removed) = try XCTUnwrap(BindingEdits.delete(at: 1, in: list))
+        try setBindings(afterDelete)
+        try assertSavedAndLive(afterDelete)
+        XCTAssertTrue(engine.actions(for: Trigger(gesture: down3, held: [])).isEmpty)
+
+        list = BindingEdits.restore(removed, at: 1, in: afterDelete)
+        try setBindings(list)
+        try assertSavedAndLive(list)
+        XCTAssertEqual(liveKey(down3)?.flags, [.maskCommand, .maskSecondaryFn])
+
+        draft = BindingDraft()
+        draft.record(left4)
+        draft.isShell = true
+        draft.command = "say replaced"
+        list = BindingEdits.save(try XCTUnwrap(draft.binding), editing: nil, in: list)
+        try setBindings(list)
+        try assertSavedAndLive(list)
+        XCTAssertEqual(list.count, 4)
+        XCTAssertEqual(list[0].action, .shell("say replaced"))
+        XCTAssertNil(liveKey(left4))
+        XCTAssertEqual(engine.actions(for: Trigger(gesture: left4, held: [])).count, 1)
+    }
+
+    func testFnWrittenByHandSurvivesAnEditThroughTheFile() throws {
+        var draft = BindingDraft(config.bindings[1])
+        draft.record(.swipe(fingers: 2, direction: .right))
+        try setBindings(BindingEdits.save(try XCTUnwrap(draft.binding), editing: 1, in: config.bindings))
+        let saved = try fileObject()["bindings"] as? [[String: Any]]
+        let action = try XCTUnwrap(saved?[1]["action"] as? [String: Any])
+        XCTAssertEqual(action["modifiers"] as? [String], ["cmd", "fn"])
+        XCTAssertEqual(liveKey(.swipe(fingers: 2, direction: .right))?.flags, [.maskCommand, .maskSecondaryFn])
+    }
+
+    func testSavingEveryBindingUnchangedKeepsTheFileMeaning() throws {
+        let before = config.bindings
+        var list = before
+        for index in list.indices {
+            list = BindingEdits.save(try XCTUnwrap(BindingDraft(list[index]).binding), editing: index, in: list)
+        }
+        try setBindings(list)
+        let reloaded = try Config.load(from: url)
+        XCTAssertEqual(try triggers(reloaded.bindings), try triggers(before))
+        XCTAssertEqual(reloaded.bindings.count, 3)
+        XCTAssertEqual(reloaded.bindings[0], sample[0])
+        XCTAssertEqual(reloaded.bindings[1].action, .key("w", modifiers: ["cmd", "fn"]))
+        XCTAssertEqual(reloaded.bindings[2], Binding(gesture: pinchIn2, holding: ["cmd"], action: .shell("open -a Terminal")))
+        try assertOtherKeysUntouched()
+    }
+
+    func testHandWrittenNumbersKeepTheirSpellingInTheFile() throws {
+        try setBindings(config.bindings)
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(text.contains("0.09,") || text.contains("0.09\n"), text)
+        XCTAssertFalse(text.contains("0.0899999"), text)
+        XCTAssertFalse(text.contains("0.0700000"), text)
+    }
+
+    func testAnInvalidBindingIsRefusedAndNothingChanges() throws {
+        let before = try Data(contentsOf: url)
+        let bad = config.bindings + [Binding(gesture: left4, action: .key("nope-key", modifiers: []))]
+        XCTAssertThrowsError(try setBindings(bad))
+        XCTAssertEqual(try Data(contentsOf: url), before)
+        XCTAssertEqual(config.bindings.count, 3)
+        XCTAssertEqual(liveKey(up3)?.key, .code(36))
+        XCTAssertTrue(engine.actions(for: Trigger(gesture: left4, held: [])).isEmpty)
+
+        let fnHeld = [Binding(gesture: left4, holding: ["fn"], action: .key("a", modifiers: []))]
+        XCTAssertThrowsError(try setBindings(fnHeld))
+        XCTAssertEqual(try Data(contentsOf: url), before)
+        XCTAssertEqual(liveKey(up3)?.key, .code(36))
+    }
+
+    func testDeletingEverythingThenUndoing() throws {
+        var removed: [(Binding, Int)] = []
+        while let (list, binding) = BindingEdits.delete(at: 0, in: config.bindings) {
+            try setBindings(list)
+            removed.append((binding, 0))
+        }
+        try assertSavedAndLive([])
+        XCTAssertEqual((try fileObject()["bindings"] as? [Any])?.count, 0)
+        let (last, index) = try XCTUnwrap(removed.last)
+        try setBindings(BindingEdits.restore(last, at: index, in: config.bindings))
+        try assertSavedAndLive([last])
+    }
+}

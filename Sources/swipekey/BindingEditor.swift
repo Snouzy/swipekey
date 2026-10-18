@@ -2,114 +2,71 @@ import AppKit
 import SwiftUI
 import SwipeKeyCore
 
-/// A binding being built in the editor, before it's valid.
-struct Draft {
-    enum Kind: Hashable { case swipe, pinch }
-
-    var kind: Kind = .swipe
-    var fingers = 3
-    var direction: Direction?
-    var pinch: PinchDirection?
-    var isShell = false
-    var key: String?
-    var modifiers: Set<String> = []
-    var command = ""
-    var holding: Set<String> = []
-
-    init() {}
-
-    init(_ binding: KeyBinding) {
-        switch binding.gesture {
-        case let .swipe(fingers, direction):
-            (kind, self.fingers, self.direction) = (.swipe, fingers, direction)
-        case let .pinch(fingers, direction):
-            (kind, self.fingers, pinch) = (.pinch, fingers, direction)
-        }
-        switch binding.action {
-        case let .key(key, modifiers):
-            self.key = key
-            self.modifiers = Set(modifiers.map(Self.canonical))
-        case let .shell(command):
-            isShell = true
-            self.command = command
-        }
-        holding = Set(binding.holding.map(Self.canonical))
-    }
-
-    /// Takes a gesture done on the trackpad.
-    mutating func record(_ gesture: SwipeKeyCore.Gesture) {
-        switch gesture {
-        case let .swipe(fingers, direction): (kind, self.fingers, self.direction) = (.swipe, fingers, direction)
-        case let .pinch(fingers, direction): (kind, self.fingers, pinch) = (.pinch, fingers, direction)
-        }
-    }
-
-    var gesture: SwipeKeyCore.Gesture? {
-        switch kind {
-        case .swipe: return direction.map { .swipe(fingers: fingers, direction: $0) }
-        case .pinch: return pinch.map { .pinch(fingers: fingers, direction: $0) }
-        }
-    }
-
-    var action: ActionSpec? {
-        if isShell {
-            let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? nil : .shell(trimmed)
-        }
-        return key.map { .key($0, modifiers: Modifiers.ordered(modifiers)) }
-    }
-
-    var binding: KeyBinding? {
-        guard let gesture, let action else { return nil }
-        return KeyBinding(gesture: gesture, holding: Modifiers.ordered(holding), action: action)
-    }
-
-    /// "command", "alt", "ctrl"... written by hand map to the names the editor uses.
-    private static func canonical(_ name: String) -> String {
-        switch name.lowercased() {
-        case "command": return "cmd"
-        case "opt", "alt": return "option"
-        case "ctrl": return "control"
-        default: return name.lowercased()
-        }
-    }
-}
-
 struct BindingEditor: View {
     @ObservedObject var store: ConfigStore
-    /// Index of the binding being edited, nil for a new one.
-    let index: Int?
-    @State var draft: Draft
-    @State private var step = 1
+    /// The binding being edited (nil for a new one), and where it was in the list.
+    let original: KeyBinding?
+    let hint: Int?
+    @State var draft: BindingDraft
+    @State private var step: Int
+    /// The furthest step reached: the step bar lets you jump back and forth up to it.
+    @State private var reached: Int
     @State private var pickByHand = false
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
 
-    init(store: ConfigStore, index: Int?, draft: Draft) {
+    init(store: ConfigStore, original: KeyBinding?, hint: Int?) {
         self.store = store
-        self.index = index
-        _draft = State(initialValue: draft)
+        self.original = original
+        self.hint = hint
+        _draft = State(initialValue: original.map(BindingDraft.init) ?? BindingDraft())
         // Editing opens on the review, where every part can be changed.
-        _step = State(initialValue: index == nil ? 1 : 3)
+        _step = State(initialValue: original == nil ? 1 : 3)
+        _reached = State(initialValue: original == nil ? 1 : 3)
+    }
+
+    /// Where the original is in the list now, if it's still there.
+    private var index: Int? {
+        guard let original else { return nil }
+        let list = store.config.bindings
+        if let hint, list.indices.contains(hint), list[hint] == original { return hint }
+        return list.firstIndex(of: original)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(index == nil ? "New binding" : "Edit binding").font(.title3.bold())
-                StepBar(step: step, labels: ["Gesture", "Action", "Review"]) { step = $0 }
+                HStack {
+                    Text(original == nil ? "New binding" : "Edit binding").font(.title3.bold())
+                    Spacer()
+                    // Leaves without saving from any step; Esc does the same (unless recording a shortcut).
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").font(.system(size: 13, weight: .semibold)).frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .keyboardShortcut(.cancelAction)
+                    .noFocusRing()
+                    .accessibilityLabel("Close without saving")
+                }
+                StepBar(step: step, reached: reached, labels: ["Gesture", "Action", "Review"]) { step = $0 }
             }
             .padding([.horizontal, .top], 22)
 
-            Group {
-                switch step {
-                case 1: gestureStep
-                case 2: actionStep
-                default: reviewStep
+            // A sheet keeps the size it opened with: a fixed-height, scrollable body, so
+            // "Or pick it by hand" opening never pushes its buttons under the footer.
+            ScrollView {
+                Group {
+                    switch step {
+                    case 1: gestureStep
+                    case 2: actionStep
+                    default: reviewStep
+                    }
                 }
+                .padding(22)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(22)
-            .frame(maxWidth: .infinity, minHeight: 300, alignment: .topLeading)
+            .frame(height: 380)
 
             Divider()
             HStack {
@@ -118,7 +75,7 @@ struct BindingEditor: View {
                 }
                 Spacer()
                 Button(step == 3 ? "Save" : "Next") {
-                    if step == 3 { save() } else { step += 1 }
+                    if step == 3 { save() } else { step += 1; reached = max(reached, step) }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canAdvance)
@@ -139,7 +96,7 @@ struct BindingEditor: View {
     private var canAdvance: Bool {
         switch step {
         case 1: return draft.gesture != nil
-        case 2: return draft.action != nil
+        case 2: return draft.action != nil && draft.actionError == nil
         default: return draft.binding != nil
         }
     }
@@ -182,8 +139,8 @@ struct BindingEditor: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Picker("Gesture", selection: $draft.kind) {
-                    Text("Swipe").tag(Draft.Kind.swipe)
-                    Text("Pinch").tag(Draft.Kind.pinch)
+                    Text("Swipe").tag(BindingDraft.Kind.swipe)
+                    Text("Pinch").tag(BindingDraft.Kind.pinch)
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 160)
                 Spacer()
@@ -213,6 +170,7 @@ struct BindingEditor: View {
         }
         .buttonStyle(ChoiceStyle(selected: selected))
         .accessibilityLabel("Swipe \(direction.rawValue)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func pinchButton(_ direction: PinchDirection, _ title: String, _ detail: String) -> some View {
@@ -224,6 +182,7 @@ struct BindingEditor: View {
             .frame(width: 190, height: 48)
         }
         .buttonStyle(ChoiceStyle(selected: draft.pinch == direction))
+        .accessibilityAddTraits(draft.pinch == direction ? .isSelected : [])
     }
 
     // MARK: Step 2, action
@@ -240,25 +199,31 @@ struct BindingEditor: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Command to run").font(.headline)
                     TextField("open -a Terminal", text: $draft.command)
+                        .accessibilityLabel("Command to run")
                         .font(.system(.body, design: .monospaced))
                         .textFieldStyle(.roundedBorder)
                     Text("Runs with /bin/sh. Shortcuts work too: shortcuts run \"My Shortcut\".")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                ShortcutField(key: $draft.key, modifiers: $draft.modifiers)
+                ShortcutField(key: $draft.key, modifiers: $draft.modifiers, valid: draft.actionError == nil)
                 HStack(spacing: 8) {
                     Text("Or build it:").foregroundStyle(.secondary)
-                    modifierChips($draft.modifiers)
+                    modifierChips($draft.modifiers, withFn: true)
                     Text("+").foregroundStyle(.secondary)
                     TextField("key, e.g. @ or return", text: Binding(
                         get: { draft.key ?? "" },
-                        set: { draft.key = $0.trimmingCharacters(in: .whitespaces).lowercased().nilIfEmpty }
+                        // "page up" and "Page Up" both mean "pageup".
+                        set: { draft.key = $0.filter { !$0.isWhitespace }.lowercased().nilIfEmpty }
                     ))
                     .textFieldStyle(.roundedBorder).frame(width: 150)
                     .accessibilityLabel("Key")
                 }
                 .font(.callout)
+            }
+            // Not while a key name is still being typed ("ret" on the way to "return").
+            if let message = draft.actionError, !Self.isPartOfKeyName(draft.key) {
+                Text(message).font(.callout).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
 
             Divider()
@@ -270,9 +235,15 @@ struct BindingEditor: View {
         }
     }
 
-    private func modifierChips(_ selection: SwiftUI.Binding<Set<String>>) -> some View {
+    private static func isPartOfKeyName(_ key: String?) -> Bool {
+        guard let key, key.count > 1 else { return false }
+        return KeyCodes.named.keys.contains { $0.hasPrefix(key) && $0 != key }
+    }
+
+    /// `fn` only for the shortcut: it can't be held on purpose with a gesture (macOS sets it for arrows).
+    private func modifierChips(_ selection: SwiftUI.Binding<Set<String>>, withFn: Bool = false) -> some View {
         HStack(spacing: 4) {
-            ForEach(Modifiers.all, id: \.name) { modifier in
+            ForEach(Modifiers.all + (withFn ? [("fn", "fn", "Function")] : []), id: \.name) { modifier in
                 let on = selection.wrappedValue.contains(modifier.name)
                 Button {
                     if on { selection.wrappedValue.remove(modifier.name) } else { selection.wrappedValue.insert(modifier.name) }
@@ -291,8 +262,7 @@ struct BindingEditor: View {
     private var reviewStep: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let binding = draft.binding {
-                BindingCard(binding: binding, edit: { step = 1 }, delete: { dismiss() })
-                    .allowsHitTesting(false)
+                BindingCard(binding: binding)
                 ForEach(Array(notes(for: binding).enumerated()), id: \.offset) { _, note in
                     HStack(alignment: .top, spacing: 10) {
                         Text(note.tag).bold()
@@ -327,27 +297,16 @@ struct BindingEditor: View {
         return notes
     }
 
-    /// Another binding with exactly the same gesture and held modifiers.
     private func clashIndex(for binding: KeyBinding) -> Int? {
-        let trigger = try? binding.trigger()
-        return store.config.bindings.indices.first { $0 != index && (try? store.config.bindings[$0].trigger()) == trigger }
+        BindingEdits.clash(with: binding, editing: index, in: store.config.bindings)
     }
 
     private func save() {
         guard let binding = draft.binding else { return }
-        var bindings = store.config.bindings
-        var at = index
-        if let clash = clashIndex(for: binding) {
-            if let current = at {
-                bindings.remove(at: clash)
-                if clash < current { at = current - 1 }
-            } else {
-                at = clash
-            }
-        }
-        if let at { bindings[at] = binding } else { bindings.append(binding) }
         do {
-            try store.setBindings(bindings)
+            let list = store.config.bindings
+            try store.setBindings(original.map { BindingEdits.save(binding, replacing: $0, near: hint, in: list) }
+                ?? BindingEdits.save(binding, editing: nil, in: list))
             dismiss()
         } catch { self.error = "\(error)" }
     }
@@ -356,6 +315,7 @@ struct BindingEditor: View {
 /// "1. Gesture  2. Action  3. Review", each step clickable once reached.
 struct StepBar: View {
     let step: Int
+    let reached: Int
     let labels: [String]
     let go: (Int) -> Void
 
@@ -371,7 +331,7 @@ struct StepBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(i + 1 > step)
+                .disabled(i + 1 > reached)
             }
         }
     }
@@ -396,6 +356,8 @@ struct ChoiceStyle: ButtonStyle {
 struct ShortcutField: View {
     @SwiftUI.Binding var key: String?
     @SwiftUI.Binding var modifiers: Set<String>
+    /// False while the key typed by hand isn't a real key: no key cap for it.
+    var valid = true
     @State private var recording = false
     @State private var held: Set<String> = []
 
@@ -437,7 +399,7 @@ struct ShortcutField: View {
     /// While modifiers are held mid-recording, show them; otherwise the recorded shortcut.
     private var shownCaps: [String] {
         if recording, !held.isEmpty { return Modifiers.symbols(Modifiers.ordered(held)) }
-        guard let key else { return Modifiers.symbols(Modifiers.ordered(modifiers)) }
+        guard let key, valid else { return Modifiers.symbols(Modifiers.ordered(modifiers)) }
         return ActionSpec.key(key, modifiers: Modifiers.ordered(modifiers)).keyCaps
     }
 }
@@ -471,11 +433,16 @@ final class RecorderView: NSView {
     var onFocus: ((Bool) -> Void)?
     private var tap: CFMachPort?
     private var tapSource: CFRunLoopSource?
+    private var watchdog: Timer?
+    private var windowObservers: [NSObjectProtocol] = []
 
     override var acceptsFirstResponder: Bool { true }
 
+    deinit { stopTap() }
+
     override func becomeFirstResponder() -> Bool {
-        startTap()
+        // The window records the new first responder after this returns.
+        DispatchQueue.main.async { [weak self] in self?.startTap() }
         onFocus?(true)
         return true
     }
@@ -488,6 +455,30 @@ final class RecorderView: NSView {
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         if newWindow == nil { stopTap() }
+    }
+
+    // A sheet that closes doesn't always take focus from its views first: stop as soon as the
+    // window stops being the key window, and pick up again if it comes back with focus here.
+    override func viewDidMoveToWindow() {
+        windowObservers.forEach(NotificationCenter.default.removeObserver)
+        windowObservers = []
+        guard let window else { return }
+        let center = NotificationCenter.default
+        for name in [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+            windowObservers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                self?.stopTap()
+            })
+        }
+        windowObservers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+            guard let self, window.firstResponder === self else { return }
+            startTap()
+        })
+    }
+
+    /// Only while this view is on screen, focused, in the key window.
+    private var shouldCapture: Bool {
+        guard let window else { return false }
+        return window.isKeyWindow && window.isVisible && window.firstResponder === self
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -508,16 +499,18 @@ final class RecorderView: NSView {
     }
 
     private func record(_ event: NSEvent) {
-        // Named keys by code; character keys by the character the layout types without modifiers
-        // (Shift aside), so "@" on AZERTY records as "@".
+        // Named keys by code; character keys by what the key types with no modifier at all, Shift
+        // included: ⇧2 is "2" + shift (not "@" + shift, which would press Shift twice in effect),
+        // and "@" on AZERTY, a key of its own, records as "@".
         let key = KeyCodes.name(forKeyCode: event.keyCode)
+            ?? event.characters(byApplyingModifiers: [])?.lowercased().nilIfEmpty
             ?? event.charactersIgnoringModifiers?.lowercased().nilIfEmpty
         guard let key else { return }
         onKey?(key, Self.names(event.modifierFlags))
     }
 
     private func startTap() {
-        guard tap == nil else { return }
+        guard tap == nil, shouldCapture else { return }
         let mask = CGEventMask((1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue))
         guard let tap = CGEvent.tapCreate(
             tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask,
@@ -532,9 +525,16 @@ final class RecorderView: NSView {
         self.tap = tap
         tapSource = source
         SystemHotKeys.setEnabled(false)
+        // Last line of defence: the keyboard must never stay swallowed once the recorder is gone.
+        watchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            if !shouldCapture { stopTap() }
+        }
     }
 
     private func stopTap() {
+        watchdog?.invalidate()
+        watchdog = nil
         guard let tap else { return }
         CGEvent.tapEnable(tap: tap, enable: false)
         if let tapSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), tapSource, .commonModes) }
