@@ -115,8 +115,11 @@ struct BindingEditor: View {
                 .disabled(!canAdvance)
             }
             .padding(.horizontal, 22).padding(.vertical, 14)
+            .background(Theme.header)
         }
         .frame(width: 560)
+        .background(Theme.content)
+        .tint(Theme.accent)
         .alert("Swipekey", isPresented: SwiftUI.Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -336,9 +339,9 @@ struct StepBar: View {
             ForEach(Array(labels.enumerated()), id: \.offset) { i, label in
                 Button { go(i + 1) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Capsule().fill(i + 1 <= step ? Color.accentColor : Color(nsColor: .separatorColor)).frame(height: 4)
+                        Capsule().fill(i + 1 <= step ? Theme.accent : Color(nsColor: .separatorColor)).frame(height: 4)
                         Text("\(i + 1). \(label)").font(.caption.weight(.semibold))
-                            .foregroundStyle(i + 1 == step ? Color.accentColor : .secondary)
+                            .foregroundStyle(i + 1 == step ? Theme.accent : .secondary)
                     }
                     .contentShape(Rectangle())
                 }
@@ -357,9 +360,9 @@ struct ChoiceStyle: ButtonStyle {
         configuration.label
             .foregroundStyle(selected ? Color.white : Color.primary)
             .background(
-                RoundedRectangle(cornerRadius: 8).fill(selected ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+                RoundedRectangle(cornerRadius: 8).fill(selected ? Theme.accent : Theme.card)
             )
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accentColor : Color(nsColor: .separatorColor)))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Theme.accent : Theme.keycapBorder))
             .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }
@@ -386,7 +389,7 @@ struct ShortcutField: View {
                 let caps = shownCaps
                 if caps.isEmpty {
                     Text(recording ? "Press your shortcut now…" : "Click here, then press your shortcut")
-                        .foregroundStyle(recording ? Color.accentColor : .secondary)
+                        .foregroundStyle(recording ? Theme.accent : .secondary)
                 } else {
                     ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in KeyCap(label: cap, large: true) }
                 }
@@ -395,11 +398,11 @@ struct ShortcutField: View {
         }
         .frame(maxWidth: .infinity, minHeight: 76)
         .background(
-            RoundedRectangle(cornerRadius: 12).fill(recording ? Color.accentColor.opacity(0.08) : Color(nsColor: .controlBackgroundColor))
+            RoundedRectangle(cornerRadius: 12).fill(recording ? Theme.accent.opacity(0.08) : Color(nsColor: .controlBackgroundColor))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(recording ? Color.accentColor : Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 2, dash: recording ? [] : [6]))
+                .strokeBorder(recording ? Theme.accent : Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 2, dash: recording ? [] : [6]))
         )
         .accessibilityElement()
         .accessibilityLabel("Shortcut recorder")

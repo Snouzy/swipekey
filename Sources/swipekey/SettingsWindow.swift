@@ -14,10 +14,12 @@ final class SettingsWindow {
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 720, height: 580),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered, defer: false
             )
             window.title = "Swipekey Settings"
+            // The tab header's colour runs up under the title, as in System Settings.
+            window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false
             window.contentMinSize = NSSize(width: 560, height: 420)
             let controller = NSHostingController(rootView: SettingsView(store: store))
@@ -34,18 +36,81 @@ final class SettingsWindow {
     }
 }
 
+/// Colours of the mock-up, with a dark-mode twin for each.
+enum Theme {
+    static let accent = adaptive(light: 0x2346D8, dark: 0x6F8CFF)
+    static let header = adaptive(light: 0xECECF0, dark: 0x2A2A2D)
+    static let content = adaptive(light: 0xF5F5F7, dark: 0x1F1F21)
+    static let card = adaptive(light: 0xFFFFFF, dark: 0x2C2C2F)
+    static let cardBorder = adaptive(light: 0xE2E2E7, dark: 0x3A3A3E)
+    static let padTop = adaptive(light: 0xECECF1, dark: 0x3A3A3E)
+    static let padBottom = adaptive(light: 0xE0E0E6, dark: 0x313134)
+    static let keycap = adaptive(light: 0xFFFFFF, dark: 0x3A3A3E)
+    static let keycapBorder = adaptive(light: 0xC9C9D0, dark: 0x55555B)
+
+    private static func adaptive(light: Int, dark: Int) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let hex = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+        })
+    }
+}
+
+enum SettingsTab: CaseIterable {
+    case bindings, general
+
+    var title: String { self == .bindings ? "Bindings" : "General" }
+    var icon: String { self == .bindings ? "hand.draw" : "gearshape" }
+}
+
 struct SettingsView: View {
     @ObservedObject var store: ConfigStore
+    @State private var tab = SettingsTab.bindings
 
     var body: some View {
-        TabView {
-            BindingsView(store: store)
-                .tabItem { Label("Bindings", systemImage: "hand.draw") }
-            GeneralView(store: store)
-                .tabItem { Label("General", systemImage: "gearshape") }
+        VStack(spacing: 0) {
+            // Icon tabs under the title, like System Settings panes.
+            HStack(spacing: 4) {
+                ForEach(SettingsTab.allCases, id: \.self) { item in
+                    Button { tab = item } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: item.icon).font(.system(size: 18))
+                            Text(item.title).font(.system(size: 12, weight: .medium))
+                        }
+                        .frame(minWidth: 64)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .foregroundStyle(tab == item ? Theme.accent : .secondary)
+                        .background(tab == item ? Theme.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .noFocusRing()
+                    .accessibilityAddTraits(tab == item ? .isSelected : [])
+                }
+            }
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .background(Theme.header.ignoresSafeArea(edges: .top))
+            Divider()
+            Group {
+                switch tab {
+                case .bindings: BindingsView(store: store)
+                case .general: GeneralView(store: store)
+                }
+            }
+            .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Theme.content)
         }
-        .padding(20)
+        .tint(Theme.accent)
         .frame(minWidth: 560, minHeight: 420)
+    }
+}
+
+extension View {
+    /// The selected tab is already tinted: the focus ring macOS adds on open is noise.
+    @ViewBuilder func noFocusRing() -> some View {
+        if #available(macOS 14, *) { focusEffectDisabled() } else { self }
     }
 }
 
@@ -55,6 +120,7 @@ struct GeneralView: View {
 
     var body: some View {
         Form {
+            Text("General").font(.system(size: 20, weight: .bold))
             Toggle("Show the icon in the menu bar", isOn: Binding(
                 get: { store.config.menuBarIcon },
                 set: { shown in attempt { try store.setMenuBarIcon(shown) } }

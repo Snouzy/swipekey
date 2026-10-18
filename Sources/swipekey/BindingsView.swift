@@ -17,8 +17,8 @@ struct BindingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Bindings").font(.title2.bold())
-                    Text("What each gesture does. Changes apply as soon as you save.")
+                    Text("Bindings").font(.system(size: 20, weight: .bold))
+                    Text("\(countLabel) — what each gesture does. Changes apply as soon as you save.")
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -62,6 +62,10 @@ struct BindingsView: View {
         } message: {
             Text(error ?? "")
         }
+    }
+
+    private var countLabel: String {
+        store.config.bindings.count == 1 ? "1 binding" : "\(store.config.bindings.count) bindings"
     }
 
     @ViewBuilder private var undoToast: some View {
@@ -115,7 +119,7 @@ struct BindingCard: View {
         HStack(spacing: 16) {
             MiniTrackpad(gesture: binding.gesture)
             VStack(alignment: .leading, spacing: 2) {
-                Text(binding.gesture.description).font(.headline)
+                Text(binding.gesture.description).font(.system(size: 15, weight: .semibold))
                 if !binding.holding.isEmpty {
                     Text("while holding \(Modifiers.symbols(binding.holding).joined(separator: " "))")
                         .font(.caption).foregroundStyle(.secondary)
@@ -125,18 +129,25 @@ struct BindingCard: View {
             Image(systemName: "arrow.right").foregroundStyle(.secondary).accessibilityHidden(true)
             ActionView(action: binding.action)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: edit) { Image(systemName: "pencil") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Edit \(binding.gesture.description)")
-            Button(action: delete) { Image(systemName: "trash") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Delete \(binding.gesture.description)")
+            HStack(spacing: 2) {
+                iconButton("pencil", "Edit \(binding.gesture.description)", edit)
+                iconButton("trash", "Delete \(binding.gesture.description)", delete)
+            }
         }
-        .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor)))
+        .padding(.vertical, 12).padding(.leading, 14).padding(.trailing, 10)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.cardBorder))
         .contentShape(Rectangle())
         .onTapGesture(count: 2, perform: edit)
+    }
+
+    private func iconButton(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 14)).frame(width: 32, height: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .accessibilityLabel(label)
     }
 }
 
@@ -165,13 +176,16 @@ struct KeyCap: View {
     var large = false
 
     var body: some View {
+        let radius: CGFloat = large ? 10 : 7
         Text(label)
             .font(.system(size: large ? 18 : 13, weight: .semibold))
             .frame(minWidth: large ? 44 : 28, minHeight: large ? 44 : 28)
-            .padding(.horizontal, large ? 10 : 6)
-            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: large ? 10 : 7))
-            .overlay(RoundedRectangle(cornerRadius: large ? 10 : 7).strokeBorder(Color(nsColor: .separatorColor)))
-            .shadow(color: .black.opacity(0.12), radius: 0, y: 1)
+            .padding(.horizontal, large ? 12 : 8)
+            .background(
+                RoundedRectangle(cornerRadius: radius).fill(Theme.keycap)
+                    .shadow(color: Theme.keycapBorder, radius: 0, y: 1)
+            )
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.keycapBorder))
     }
 }
 
@@ -186,17 +200,17 @@ struct MiniTrackpad: View {
             Canvas { canvas, size in
                 for dot in dots(at: t, in: size) {
                     let rect = CGRect(x: dot.x - 6, y: dot.y - 6, width: 12, height: 12)
-                    canvas.fill(Path(ellipseIn: rect.insetBy(dx: -4, dy: -4)), with: .color(.accentColor.opacity(0.18 * dot.alpha)))
-                    canvas.fill(Path(ellipseIn: rect), with: .color(.accentColor.opacity(dot.alpha)))
+                    canvas.fill(Path(ellipseIn: rect.insetBy(dx: -4, dy: -4)), with: .color(Theme.accent.opacity(0.18 * dot.alpha)))
+                    canvas.fill(Path(ellipseIn: rect), with: .color(Theme.accent.opacity(dot.alpha)))
                 }
             }
         }
         .frame(width: 96, height: 64)
         .background(
-            LinearGradient(colors: [Color(nsColor: .controlColor), Color(nsColor: .underPageBackgroundColor)], startPoint: .top, endPoint: .bottom),
+            LinearGradient(colors: [Theme.padTop, Theme.padBottom], startPoint: .top, endPoint: .bottom),
             in: RoundedRectangle(cornerRadius: 10)
         )
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color(nsColor: .separatorColor)))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.cardBorder))
         .accessibilityHidden(true)
     }
 
