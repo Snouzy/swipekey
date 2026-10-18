@@ -222,30 +222,39 @@ struct MiniTrackpad: View {
         .accessibilityHidden(true)
     }
 
+    // Plain Doubles and one operation per line: CGFloat/Double mixes in one expression make
+    // older compilers give up type-checking.
     private func dots(at t: Double, in size: CGSize) -> [(x: Double, y: Double, alpha: Double)] {
         // Fade in, move, fade out.
-        let alpha = t < 0.2 ? t / 0.2 : (t > 0.75 ? max(0, (1 - t) / 0.25) : 1)
-        let travel = (t - 0.5) * 2 // -1 ... 1
-        let cx = size.width / 2, cy = size.height / 2
+        let alpha: Double = t < 0.2 ? t / 0.2 : (t > 0.75 ? max(0, (1 - t) / 0.25) : 1)
+        let travel: Double = (t - 0.5) * 2 // -1 ... 1
+        let cx = Double(size.width) / 2
+        let cy = Double(size.height) / 2
         switch gesture {
         case let .swipe(fingers, direction):
-            let (dx, dy): (Double, Double) = switch direction {
-            case .up: (0, -14 * travel)
-            case .down: (0, 14 * travel)
-            case .left: (-18 * travel, 0)
-            case .right: (18 * travel, 0)
+            var dx = 0.0, dy = 0.0
+            switch direction {
+            case .up: dy = -14 * travel
+            case .down: dy = 14 * travel
+            case .left: dx = -18 * travel
+            case .right: dx = 18 * travel
             }
             // Tighter with many fingers, so a 5-finger sideways swipe stays on the pad.
-            let spacing = min(15, 44 / Double(max(fingers - 1, 1)))
+            let spacing: Double = min(15, 44 / Double(max(fingers - 1, 1)))
+            let middle = Double(fingers - 1) / 2
             return (0..<fingers).map { i in
-                (cx + (Double(i) - Double(fingers - 1) / 2) * spacing + dx, cy + dy, alpha)
+                let offset: Double = (Double(i) - middle) * spacing
+                return (x: cx + offset + dx, y: cy + dy, alpha: alpha)
             }
         case let .pinch(fingers, direction):
             // Fingers on a circle around the centre: the radius shrinks (in) or grows (out).
-            let radius = 20 - 10 * (direction == .in ? (travel + 1) / 2 : 1 - (travel + 1) / 2)
+            let phase: Double = (travel + 1) / 2
+            let radius: Double = 20 - 10 * (direction == .in ? phase : 1 - phase)
             return (0..<fingers).map { i in
-                let angle = Double.pi * 0.85 + 2 * Double.pi * Double(i) / Double(fingers)
-                return (cx + cos(angle) * radius * 1.3, cy + sin(angle) * radius, alpha)
+                let angle: Double = Double.pi * 0.85 + 2 * Double.pi * Double(i) / Double(fingers)
+                let x: Double = cx + cos(angle) * radius * 1.3
+                let y: Double = cy + sin(angle) * radius
+                return (x: x, y: y, alpha: alpha)
             }
         }
     }
