@@ -57,9 +57,9 @@ public final class Engine {
         }
         self.actions = actions
         self.heldModifiers = heldModifiers
-        let threshold = config.swipeThreshold
+        let swipeThreshold = config.swipeThreshold, pinchThreshold = config.pinchThreshold
         // New gesture types plug in here.
-        self.makeRecognizers = { [SwipeRecognizer(threshold: threshold)] }
+        self.makeRecognizers = { [SwipeRecognizer(threshold: swipeThreshold), PinchRecognizer(threshold: pinchThreshold)] }
     }
 
     /// Thread-safe: MultitouchSupport delivers each device's frames on its own thread.

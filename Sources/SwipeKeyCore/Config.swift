@@ -33,6 +33,8 @@ public struct Binding: Codable, Equatable {
 public struct Config: Codable, Equatable {
     /// Swipe distance in normalized trackpad units (0...1 across the pad).
     public var swipeThreshold: Double
+    /// How much the fingers' spread must change for a pinch, in normalized trackpad units.
+    public var pinchThreshold: Double
     /// Swallow scroll events while this many fingers (or more) touch the trackpad, so a swipe
     /// doesn't also scroll the window underneath. 0 turns it off.
     public var blockScrollWithFingers: Int
@@ -40,18 +42,20 @@ public struct Config: Codable, Equatable {
     /// Key events to rewrite, e.g. to fix a shortcut another app sends without its modifiers.
     public var remaps: [KeyRemap]
 
-    public init(swipeThreshold: Double = 0.12, blockScrollWithFingers: Int = 3, bindings: [Binding], remaps: [KeyRemap] = []) {
+    public init(swipeThreshold: Double = 0.12, pinchThreshold: Double = 0.05, blockScrollWithFingers: Int = 3, bindings: [Binding], remaps: [KeyRemap] = []) {
         self.remaps = remaps
         self.swipeThreshold = swipeThreshold
+        self.pinchThreshold = pinchThreshold
         self.blockScrollWithFingers = blockScrollWithFingers
         self.bindings = bindings
     }
 
-    private enum CodingKeys: String, CodingKey { case swipeThreshold, blockScrollWithFingers, bindings, remaps }
+    private enum CodingKeys: String, CodingKey { case swipeThreshold, pinchThreshold, blockScrollWithFingers, bindings, remaps }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         swipeThreshold = try c.decodeIfPresent(Double.self, forKey: .swipeThreshold) ?? 0.12
+        pinchThreshold = try c.decodeIfPresent(Double.self, forKey: .pinchThreshold) ?? 0.05
         blockScrollWithFingers = try c.decodeIfPresent(Int.self, forKey: .blockScrollWithFingers) ?? 3
         bindings = try c.decode([Binding].self, forKey: .bindings)
         remaps = try c.decodeIfPresent([KeyRemap].self, forKey: .remaps) ?? []

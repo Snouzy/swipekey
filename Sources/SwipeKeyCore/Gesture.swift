@@ -31,14 +31,23 @@ public enum Direction: String, Codable, CaseIterable {
     case up, down, left, right
 }
 
+public enum PinchDirection: String, Codable, CaseIterable {
+    /// Fingers move toward each other.
+    case `in`
+    /// Fingers spread apart.
+    case out
+}
+
 /// Every gesture swipekey can recognize. To add one: add a case here, teach `Codable` its
 /// `type` name below, and write a `GestureRecognizer` that emits it.
 public enum Gesture: Hashable, CustomStringConvertible {
     case swipe(fingers: Int, direction: Direction)
+    case pinch(fingers: Int, direction: PinchDirection)
 
     public var description: String {
         switch self {
         case let .swipe(fingers, direction): return "\(fingers)-finger swipe \(direction.rawValue)"
+        case let .pinch(fingers, direction): return "\(fingers)-finger pinch \(direction.rawValue)"
         }
     }
 }
@@ -55,6 +64,11 @@ extension Gesture: Codable {
                 fingers: try c.decode(Int.self, forKey: .fingers),
                 direction: try c.decode(Direction.self, forKey: .direction)
             )
+        case "pinch":
+            self = .pinch(
+                fingers: try c.decode(Int.self, forKey: .fingers),
+                direction: try c.decode(PinchDirection.self, forKey: .direction)
+            )
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: c, debugDescription: "Unknown gesture type \"\(type)\"")
         }
@@ -65,6 +79,10 @@ extension Gesture: Codable {
         switch self {
         case let .swipe(fingers, direction):
             try c.encode("swipe", forKey: .type)
+            try c.encode(fingers, forKey: .fingers)
+            try c.encode(direction, forKey: .direction)
+        case let .pinch(fingers, direction):
+            try c.encode("pinch", forKey: .type)
             try c.encode(fingers, forKey: .fingers)
             try c.encode(direction, forKey: .direction)
         }

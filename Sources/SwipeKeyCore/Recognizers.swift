@@ -1,3 +1,5 @@
+import Foundation
+
 /// Turns a stream of touch frames from one device into gestures.
 /// Each device gets its own instances, so recognizers can keep state freely.
 public protocol GestureRecognizer: AnyObject {
@@ -55,6 +57,60 @@ public final class SwipeRecognizer: GestureRecognizer {
 
         firedThisSession = true
         return [.swipe(fingers: fingerCount, direction: direction)]
+    }
+
+    private func reset() {
+        fingerCount = 0
+        origin = nil
+        firedThisSession = false
+    }
+}
+
+/// Emits `.pinch` when the fingers move toward each other (`in`) or apart (`out`) past `threshold`,
+/// while their centroid stays roughly in place. Fires at most once per touch session.
+public final class PinchRecognizer: GestureRecognizer {
+    /// Change in the fingers' mean distance to their centroid, in normalized trackpad units (0...1).
+    public var threshold: Double
+    /// The spread change must be this many times larger than the centroid's travel, so a swipe
+    /// whose fingers drift together doesn't count as a pinch.
+    public var dominance: Double
+
+    private var fingerCount = 0
+    private var origin: (x: Double, y: Double, spread: Double)?
+    private var firedThisSession = false
+
+    public init(threshold: Double = 0.05, dominance: Double = 1.5) {
+        self.threshold = threshold
+        self.dominance = dominance
+    }
+
+    public func process(_ frame: TouchFrame) -> [Gesture] {
+        let active = frame.touches.filter(\.isTouching)
+        guard !active.isEmpty else {
+            reset()
+            return []
+        }
+
+        let n = Double(active.count)
+        let cx = active.map(\.x).reduce(0, +) / n
+        let cy = active.map(\.y).reduce(0, +) / n
+        let spread = active.map { hypot($0.x - cx, $0.y - cy) }.reduce(0, +) / n
+
+        // Same as swipes: restart measuring whenever the finger count changes.
+        if active.count != fingerCount {
+            fingerCount = active.count
+            origin = (cx, cy, spread)
+            return []
+        }
+
+        guard !firedThisSession, fingerCount >= 2, let origin else { return [] }
+
+        let change = spread - origin.spread
+        let travel = hypot(cx - origin.x, cy - origin.y)
+        guard abs(change) >= threshold, abs(change) >= travel * dominance else { return [] }
+
+        firedThisSession = true
+        return [.pinch(fingers: fingerCount, direction: change < 0 ? .in : .out)]
     }
 
     private func reset() {

@@ -75,11 +75,12 @@ Then, once:
 
 | Field | Values |
 |---|---|
-| `gesture` | `swipe` with `fingers` (2 and up) and `direction` (`up`, `down`, `left`, `right`) |
+| `gesture` | `swipe` with `fingers` (2 and up) and `direction` (`up`, `down`, `left`, `right`), or `pinch` with `fingers` (2 and up) and `direction` (`in` toward the centre, `out` apart) |
 | `holding` | optional: modifier keys you hold on the keyboard during the gesture (`cmd`, `shift`, `option`, `control`). The binding fires only with exactly those held, so a plain swipe and a ⌘ + swipe can do different things |
 | `action` | `key` with `key` and optional `modifiers` (`cmd`, `shift`, `option`, `control`, `fn`), or `shell` with `command` |
 | `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code. Characters follow your keyboard layout: `z` is the key that types z, on QWERTY, AZERTY, QWERTZ or Dvorak |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
+| `pinchThreshold` | how much the fingers close or spread before a pinch fires, as a fraction of the trackpad (default `0.05`) |
 | `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
 | `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipe below |
 
@@ -118,6 +119,17 @@ Hold a key on the keyboard while you swipe to get a second action on the same ge
   "holding": ["cmd"],
   "action":  { "type": "key", "key": "return", "modifiers": ["shift"] } }
 ```
+
+### Trigger a shortcut with a two-finger pinch
+
+Pinch two fingers toward the centre to press `⌘@`. `@` follows your layout, like any character key.
+
+```json
+{ "gesture": { "type": "pinch", "fingers": 2, "direction": "in" },
+  "action":  { "type": "key", "key": "@", "modifiers": ["cmd"] } }
+```
+
+macOS still zooms on a two-finger pinch in apps that support it: turn off *Zoom in or out* in System Settings → Trackpad → Scroll & Zoom if that gets in the way.
 
 ### Close a tab or window with a gesture
 

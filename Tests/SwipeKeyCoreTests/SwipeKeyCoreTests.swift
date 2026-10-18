@@ -67,6 +67,59 @@ final class SwipeRecognizerTests: XCTestCase {
     }
 }
 
+final class PinchRecognizerTests: XCTestCase {
+    /// Two fingers `gap` apart horizontally, centred on (cx, 0.5).
+    private func two(gap: Double, cx: Double = 0.5) -> TouchFrame {
+        TouchFrame(
+            touches: [Touch(x: cx - gap / 2, y: 0.5, identifier: 0), Touch(x: cx + gap / 2, y: 0.5, identifier: 1)],
+            timestamp: 0
+        )
+    }
+
+    func testTwoFingerPinchIn() {
+        let r = PinchRecognizer(threshold: 0.05)
+        XCTAssertEqual(r.process(two(gap: 0.4)), [])
+        XCTAssertEqual(r.process(two(gap: 0.35)), [])
+        XCTAssertEqual(r.process(two(gap: 0.25)), [.pinch(fingers: 2, direction: .in)])
+    }
+
+    func testTwoFingerPinchOut() {
+        let r = PinchRecognizer()
+        _ = r.process(two(gap: 0.1))
+        XCTAssertEqual(r.process(two(gap: 0.3)), [.pinch(fingers: 2, direction: .out)])
+    }
+
+    func testFiresOncePerSessionAndRearmsAfterLift() {
+        let r = PinchRecognizer()
+        _ = r.process(two(gap: 0.4))
+        XCTAssertEqual(r.process(two(gap: 0.2)).count, 1)
+        XCTAssertEqual(r.process(two(gap: 0.05)), [])
+        _ = r.process(TouchFrame(touches: [], timestamp: 0))
+        _ = r.process(two(gap: 0.4))
+        XCTAssertEqual(r.process(two(gap: 0.2)).count, 1)
+    }
+
+    func testSwipeWithFingersDriftingTogetherIsNotAPinch() {
+        let r = PinchRecognizer()
+        _ = r.process(two(gap: 0.3, cx: 0.3))
+        XCTAssertEqual(r.process(two(gap: 0.18, cx: 0.6)), [])
+    }
+
+    func testPinchDoesNotTriggerASwipe() {
+        let r = SwipeRecognizer()
+        _ = r.process(two(gap: 0.4))
+        XCTAssertEqual(r.process(two(gap: 0.1)), [])
+    }
+
+    func testDecodesPinchBinding() throws {
+        let json = #"{ "bindings": [ { "gesture": { "type": "pinch", "fingers": 2, "direction": "in" }, "action": { "type": "key", "key": "@", "modifiers": ["cmd"] } } ] }"#
+        let config = try JSONDecoder().decode(Config.self, from: Data(json.utf8))
+        XCTAssertEqual(config.bindings[0].gesture, .pinch(fingers: 2, direction: .in))
+        XCTAssertEqual(config.pinchThreshold, 0.05)
+        XCTAssertEqual(try JSONDecoder().decode(Config.self, from: Data(config.jsonString().utf8)), config)
+    }
+}
+
 final class ConfigTests: XCTestCase {
     func testDecodesBindings() throws {
         let json = """
