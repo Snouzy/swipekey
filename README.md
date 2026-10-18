@@ -10,7 +10,7 @@ One small background app, one JSON file, no account, no subscription. The code i
 [![macOS 13+](https://img.shields.io/badge/macOS-13%2B-2346d8)](#run-it)
 [![CI](https://github.com/Snouzy/swipekey/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Snouzy/swipekey/actions/workflows/ci.yml)
 
-[Run it](#run-it) · [Configure](#configure) · [Extend it](#extend-it) · [License](LICENSE)
+[Run it](#run-it) · [Settings](#settings-window) · [Configure](#configure) · [Extend it](#extend-it) · [License](LICENSE)
 
 ## See it in 20 seconds
 
@@ -43,7 +43,7 @@ Then, once:
 2. **Allow it.** `make permissions` opens System Settings → Privacy & Security → Accessibility and shows the app in Finder: drag `Swipekey.app` into the list.
 3. `make restart`, and swipe.
 
-Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, open the settings window (⌘,), edit and reload the config, open the log, and quit. In the settings window you add, change and delete bindings without touching the JSON: do the gesture on your trackpad (or pick it), press the shortcut you want, even a system one like ⌘Space, save, and it applies right away. The Sensitivity tab has a test area: your fingers show up live, a bar fills toward the threshold, and it tells you whether the swipe would fire, without running anything. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
+Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, open the [settings window](#settings-window) (⌘,), edit and reload the config, open the log, and quit. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
 
 | Command | What it does |
 |---|---|
@@ -53,6 +53,29 @@ Swipekey puts a small trackpad icon in the menu bar. From it you can pause and r
 | `make uninstall` | Remove the app and the LaunchAgent, keep the config |
 
 `swipekey --debug` prints every gesture it recognizes.
+
+## Settings window
+
+Everything in the config can be changed here without touching the JSON, and every change applies as soon as you save.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-bindings-dark.png">
+  <img src=".github/assets/settings-bindings-light.png" width="640" alt="The Bindings tab: one card per gesture, with an animated trackpad on the left and the keys it presses on the right">
+</picture>
+
+**Add or edit a binding** in three steps: do the gesture on your trackpad (or pick it by hand), press the shortcut you want, review. System shortcuts like ⌘Space are recorded instead of opening Spotlight, and a gesture already in use, or taken by macOS, is flagged before you save.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-editor-dark.png">
+  <img src=".github/assets/settings-editor-light.png" width="640" alt="Editing a binding: the shortcut ⌘ Space drawn as large keys, with modifier buttons below">
+</picture>
+
+**Tune the sensitivity** with your real fingers: they show up live in the test area, a bar fills toward the threshold, and it tells you whether the swipe fired or how much it fell short. Nothing runs while you test.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-sensitivity-dark.png">
+  <img src=".github/assets/settings-sensitivity-light.png" width="640" alt="The Sensitivity tab: swipe and pinch sliders, and a test area showing three fingers and the message Fired: 3-finger swipe up → Return">
+</picture>
 
 ## Configure
 
