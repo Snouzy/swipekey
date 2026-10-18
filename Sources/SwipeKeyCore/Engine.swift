@@ -30,12 +30,25 @@ public final class Engine {
     private let heldModifiers: () -> CGEventFlags
     private var recognizersByDevice: [UInt: [GestureRecognizer]] = [:]
     private var fingersByDevice: [UInt: Int] = [:]
+    private var enabled = true
     private let lock = NSLock()
 
-    /// Fingers currently pressed on the busiest trackpad (thread-safe).
+    /// Fingers currently pressed on the busiest trackpad (thread-safe). Zero while paused,
+    /// so scrolling is never blocked then.
     public var activeFingers: Int {
         lock.lock(); defer { lock.unlock() }
-        return fingersByDevice.values.max() ?? 0
+        return enabled ? fingersByDevice.values.max() ?? 0 : 0
+    }
+
+    /// False pauses swipekey: no gesture fires and no scroll is blocked (thread-safe).
+    public var isEnabled: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return enabled }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            enabled = newValue
+            // Gestures in progress start over on resume instead of firing halfway through.
+            recognizersByDevice = [:]
+        }
     }
 
     /// Called for every recognized gesture, bound or not (used by `--debug`).
@@ -49,11 +62,10 @@ public final class Engine {
     ) throws {
         var actions: [Trigger: [Action]] = [:]
         for binding in config.bindings {
-            let held = try KeyCodes.flags(for: binding.holding)
-            if held.contains(.maskSecondaryFn) {
+            if try KeyCodes.flags(for: binding.holding).contains(.maskSecondaryFn) {
                 throw ConfigError("\"fn\" can't be used in \"holding\": use cmd, shift, option or control.")
             }
-            actions[Trigger(gesture: binding.gesture, held: held), default: []].append(try binding.action.makeAction())
+            actions[try binding.trigger(), default: []].append(try binding.action.makeAction())
         }
         self.actions = actions
         self.heldModifiers = heldModifiers
@@ -65,6 +77,10 @@ public final class Engine {
     /// Thread-safe: MultitouchSupport delivers each device's frames on its own thread.
     public func handle(_ frame: TouchFrame, device: UInt) {
         lock.lock()
+        guard enabled else {
+            lock.unlock()
+            return
+        }
         let recognizers = recognizersByDevice[device] ?? makeRecognizers()
         recognizersByDevice[device] = recognizers
         fingersByDevice[device] = frame.touches.filter(\.isTouching).count

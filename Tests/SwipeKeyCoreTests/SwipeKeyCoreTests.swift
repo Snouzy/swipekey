@@ -316,6 +316,81 @@ final class FingerCountTests: XCTestCase {
     }
 }
 
+final class PauseTests: XCTestCase {
+    private func swipeUp(_ engine: Engine) {
+        for dy in [0.0, 0.2] {
+            engine.handle(TouchFrame(touches: (0..<3).map { Touch(x: 0.3 + Double($0) * 0.1, y: 0.3 + dy, identifier: $0) }, timestamp: dy), device: 1)
+        }
+    }
+
+    func testPausedEngineFiresNothingAndBlocksNoScroll() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        let fired = expectation(description: "gesture")
+        fired.isInverted = true
+        engine.onGesture = { _ in fired.fulfill() }
+        engine.isEnabled = false
+        swipeUp(engine)
+        XCTAssertEqual(engine.activeFingers, 0)
+        wait(for: [fired], timeout: 0.2)
+    }
+
+    func testResumedEngineFiresAgain() throws {
+        let engine = try Engine(config: Config(bindings: []))
+        let fired = expectation(description: "gesture")
+        engine.onGesture = { trigger in
+            XCTAssertEqual(trigger.gesture, .swipe(fingers: 3, direction: .up))
+            fired.fulfill()
+        }
+        engine.isEnabled = false
+        engine.isEnabled = true
+        swipeUp(engine)
+        wait(for: [fired], timeout: 1)
+    }
+}
+
+final class MenuSettingsTests: XCTestCase {
+    func testMenuBarIconDefaultsOnAndEditorToNone() throws {
+        let config = try JSONDecoder().decode(Config.self, from: Data(#"{ "bindings": [] }"#.utf8))
+        XCTAssertTrue(config.menuBarIcon)
+        XCTAssertNil(config.editor)
+        let set = try JSONDecoder().decode(Config.self, from: Data(#"{ "bindings": [], "menuBarIcon": false, "editor": "Cursor" }"#.utf8))
+        XCTAssertFalse(set.menuBarIcon)
+        XCTAssertEqual(set.editor, "Cursor")
+    }
+
+    func testUpdateChangesOneSettingAndKeepsTheRest() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("swipekey-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(#"{ "swipeThreshold": 0.09, "bindings": [ { "gesture": { "type": "swipe", "fingers": 3, "direction": "up" }, "action": { "type": "key", "key": "return" } } ] }"#.utf8).write(to: url)
+
+        try Config.update(.editor, to: "Zed", at: url)
+        var config = try Config.load(from: url)
+        XCTAssertEqual(config.editor, "Zed")
+        XCTAssertEqual(config.swipeThreshold, 0.09)
+        XCTAssertEqual(config.bindings.count, 1)
+        // Only what the user wrote plus the new key: no defaults filled in.
+        let keys = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]).keys
+        XCTAssertEqual(Set(keys), ["swipeThreshold", "bindings", "editor"])
+
+        try Config.update(.editor, to: nil, at: url)
+        config = try Config.load(from: url)
+        XCTAssertNil(config.editor)
+    }
+
+    func testActionsReadLikeShortcuts() {
+        XCTAssertEqual(ActionSpec.key("@", modifiers: ["cmd"]).description, "⌘@")
+        XCTAssertEqual(ActionSpec.key("tab", modifiers: ["shift", "control"]).description, "⌃⇧Tab")
+        XCTAssertEqual(ActionSpec.key("return", modifiers: []).description, "Return")
+        XCTAssertEqual(ActionSpec.shell("open -a Terminal").description, "Run: open -a Terminal")
+        XCTAssertEqual(ActionSpec.shell(String(repeating: "x", count: 50)).description, "Run: " + String(repeating: "x", count: 39) + "…")
+    }
+
+    func testBindingTriggerIncludesHeldModifiers() throws {
+        let binding = Binding(gesture: .swipe(fingers: 3, direction: .up), holding: ["cmd"], action: .key("return", modifiers: []))
+        XCTAssertEqual(try binding.trigger(), Trigger(gesture: .swipe(fingers: 3, direction: .up), held: .maskCommand))
+    }
+}
+
 final class BlockScrollConfigTests: XCTestCase {
     func testDefaultsToThreeAndCanBeTurnedOff() throws {
         let plain = #"{"bindings":[]}"#, off = #"{"blockScrollWithFingers":0,"bindings":[]}"#

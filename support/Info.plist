@@ -16,7 +16,7 @@
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
-    <!-- Background agent: no Dock icon, no menu bar. -->
+    <!-- Background agent: no Dock icon or app menu, only the optional menu bar icon. -->
     <key>LSUIElement</key>
     <true/>
 </dict>

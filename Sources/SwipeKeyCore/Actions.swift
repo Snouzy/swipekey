@@ -8,7 +8,7 @@ public protocol Action {
 }
 
 /// The JSON form of an action, e.g. `{"type": "key", "key": "return", "modifiers": ["cmd"]}`.
-public enum ActionSpec: Codable, Equatable {
+public enum ActionSpec: Codable, Equatable, CustomStringConvertible {
     case key(String, modifiers: [String])
     case shell(String)
 
@@ -40,6 +40,21 @@ public enum ActionSpec: Codable, Equatable {
         case let .shell(command):
             try c.encode("shell", forKey: .type)
             try c.encode(command, forKey: .command)
+        }
+    }
+
+    /// How the menu shows it: "⌘@", "⌃⇧Tab", "Run: open -a Terminal".
+    public var description: String {
+        switch self {
+        case let .key(key, modifiers):
+            let flags = (try? KeyCodes.flags(for: modifiers)) ?? []
+            let symbols: [(CGEventFlags, String)] = [
+                (.maskSecondaryFn, "fn "), (.maskControl, "⌃"), (.maskAlternate, "⌥"), (.maskShift, "⇧"), (.maskCommand, "⌘"),
+            ]
+            let name = key.count == 1 ? key.uppercased() : key.prefix(1).uppercased() + key.dropFirst()
+            return symbols.filter { flags.contains($0.0) }.map(\.1).joined() + name
+        case let .shell(command):
+            return "Run: " + (command.count > 40 ? command.prefix(39) + "…" : command)
         }
     }
 

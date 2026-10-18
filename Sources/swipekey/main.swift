@@ -105,6 +105,36 @@ workspaceCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: ni
     _ = MultitouchSource.start(engine)
 }
 
+/// Restarts swipekey in place with the config file as it is now, so every setting applies.
+/// The config is checked first: a broken file keeps the running instance and says why.
+func reloadConfig() throws {
+    if FileManager.default.fileExists(atPath: configURL.path) {
+        let next = try Config.load(from: configURL)
+        _ = try Engine(config: next)
+        _ = try KeyRemapper(next.remaps)
+    }
+    log("Reloading \(configURL.path).")
+    MultitouchSource.stop()
+    // Same pid and same signed binary: launchd keeps tracking it and Accessibility stays granted.
+    execv(Bundle.main.executablePath ?? CommandLine.arguments[0], CommandLine.unsafeArgv)
+    throw ConfigError("Could not restart: \(String(cString: strerror(errno)))")
+}
+
+// A background app (LSUIElement): no Dock icon, only the optional menu bar icon.
+let app = NSApplication.shared
+app.setActivationPolicy(.accessory)
+var menuBar: MenuBar?
+if config.menuBarIcon {
+    let bar = MenuBar(engine: engine, config: config, configURL: configURL) {
+        do { try reloadConfig() } catch { menuBar?.show(error) }
+    }
+    menuBar = bar
+    engine.onGesture = { trigger in
+        if debug { log("gesture: \(trigger)") }
+        bar.gestureFired(trigger)
+    }
+}
+
 signal(SIGINT, SIG_IGN)
 signal(SIGTERM, SIG_IGN)
 let signalSources = [SIGINT, SIGTERM].map { sig in
@@ -117,4 +147,4 @@ let signalSources = [SIGINT, SIGTERM].map { sig in
     return source
 }
 
-RunLoop.main.run()
+app.run()
