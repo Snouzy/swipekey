@@ -1,0 +1,246 @@
+import SwiftUI
+import SwipeKeyCore
+
+/// SwiftUI has its own `Binding`: the config's is spelled out here.
+typealias KeyBinding = SwipeKeyCore.Binding
+
+/// The Bindings tab: one card per binding, add / edit in a sheet, delete with undo.
+struct BindingsView: View {
+    @ObservedObject var store: ConfigStore
+    /// The binding being edited: nil index for a new one.
+    @State private var editing: EditorTarget?
+    @State private var undo: (binding: KeyBinding, index: Int)?
+    @State private var undoTimer: Timer?
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bindings").font(.title2.bold())
+                    Text("What each gesture does. Changes apply as soon as you save.")
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    editing = EditorTarget(index: nil)
+                } label: {
+                    Label("Add binding", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            if store.config.bindings.isEmpty {
+                Text("No bindings yet. Add one to turn a gesture into a shortcut.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 160)
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6])).foregroundStyle(.tertiary))
+            } else {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(Array(store.config.bindings.enumerated()), id: \.offset) { index, binding in
+                            BindingCard(
+                                binding: binding,
+                                edit: { editing = EditorTarget(index: index) },
+                                delete: { delete(at: index) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .overlay(alignment: .bottom) { undoToast }
+        .sheet(item: $editing) { target in
+            BindingEditor(
+                store: store,
+                index: target.index,
+                draft: target.index.map { Draft(store.config.bindings[$0]) } ?? Draft()
+            )
+        }
+        .alert("Swipekey", isPresented: SwiftUI.Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(error ?? "")
+        }
+    }
+
+    @ViewBuilder private var undoToast: some View {
+        if let undo {
+            HStack(spacing: 14) {
+                Text("Deleted \(undo.binding.gesture.description).")
+                Button("Undo") { restore() }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .shadow(radius: 8, y: 3)
+            .padding(.bottom, 4)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private func delete(at index: Int) {
+        var bindings = store.config.bindings
+        let removed = bindings.remove(at: index)
+        do {
+            try store.setBindings(bindings)
+            withAnimation { undo = (removed, index) }
+            undoTimer?.invalidate()
+            undoTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { _ in
+                withAnimation { undo = nil }
+            }
+        } catch { self.error = "\(error)" }
+    }
+
+    private func restore() {
+        guard let undo else { return }
+        var bindings = store.config.bindings
+        bindings.insert(undo.binding, at: min(undo.index, bindings.count))
+        do { try store.setBindings(bindings) } catch { self.error = "\(error)" }
+        withAnimation { self.undo = nil }
+    }
+}
+
+/// Which binding the editor sheet works on.
+struct EditorTarget: Identifiable {
+    let id = UUID()
+    let index: Int?
+}
+
+struct BindingCard: View {
+    let binding: KeyBinding
+    let edit: () -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 16) {
+            MiniTrackpad(gesture: binding.gesture)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(binding.gesture.description).font(.headline)
+                if !binding.holding.isEmpty {
+                    Text("while holding \(Modifiers.symbols(binding.holding).joined(separator: " "))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "arrow.right").foregroundStyle(.secondary).accessibilityHidden(true)
+            ActionView(action: binding.action)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: edit) { Image(systemName: "pencil") }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Edit \(binding.gesture.description)")
+            Button(action: delete) { Image(systemName: "trash") }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Delete \(binding.gesture.description)")
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor)))
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2, perform: edit)
+    }
+}
+
+/// A key action drawn as key caps, a shell action as its command.
+struct ActionView: View {
+    let action: ActionSpec
+
+    var body: some View {
+        switch action {
+        case .key:
+            HStack(spacing: 5) {
+                ForEach(Array(action.keyCaps.enumerated()), id: \.offset) { _, cap in KeyCap(label: cap) }
+            }
+        case let .shell(command):
+            Text(command)
+                .font(.system(.caption, design: .monospaced))
+                .lineLimit(2)
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .background(Color(nsColor: .quaternaryLabelColor).opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+        }
+    }
+}
+
+struct KeyCap: View {
+    let label: String
+    var large = false
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: large ? 18 : 13, weight: .semibold))
+            .frame(minWidth: large ? 44 : 28, minHeight: large ? 44 : 28)
+            .padding(.horizontal, large ? 10 : 6)
+            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: large ? 10 : 7))
+            .overlay(RoundedRectangle(cornerRadius: large ? 10 : 7).strokeBorder(Color(nsColor: .separatorColor)))
+            .shadow(color: .black.opacity(0.12), radius: 0, y: 1)
+    }
+}
+
+/// A small trackpad with the gesture's fingers sliding or pinching on a loop.
+struct MiniTrackpad: View {
+    let gesture: SwipeKeyCore.Gesture
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let t = reduceMotion ? 0.5 : context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.9) / 1.9
+            Canvas { canvas, size in
+                for dot in dots(at: t, in: size) {
+                    let rect = CGRect(x: dot.x - 6, y: dot.y - 6, width: 12, height: 12)
+                    canvas.fill(Path(ellipseIn: rect.insetBy(dx: -4, dy: -4)), with: .color(.accentColor.opacity(0.18 * dot.alpha)))
+                    canvas.fill(Path(ellipseIn: rect), with: .color(.accentColor.opacity(dot.alpha)))
+                }
+            }
+        }
+        .frame(width: 96, height: 64)
+        .background(
+            LinearGradient(colors: [Color(nsColor: .controlColor), Color(nsColor: .underPageBackgroundColor)], startPoint: .top, endPoint: .bottom),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color(nsColor: .separatorColor)))
+        .accessibilityHidden(true)
+    }
+
+    private func dots(at t: Double, in size: CGSize) -> [(x: Double, y: Double, alpha: Double)] {
+        // Fade in, move, fade out.
+        let alpha = t < 0.2 ? t / 0.2 : (t > 0.75 ? max(0, (1 - t) / 0.25) : 1)
+        let travel = (t - 0.5) * 2 // -1 ... 1
+        let cx = size.width / 2, cy = size.height / 2
+        switch gesture {
+        case let .swipe(fingers, direction):
+            let (dx, dy): (Double, Double) = switch direction {
+            case .up: (0, -14 * travel)
+            case .down: (0, 14 * travel)
+            case .left: (-18 * travel, 0)
+            case .right: (18 * travel, 0)
+            }
+            return (0..<fingers).map { i in
+                (cx + (Double(i) - Double(fingers - 1) / 2) * 15 + dx, cy + dy, alpha)
+            }
+        case let .pinch(fingers, direction):
+            // Fingers on a circle around the centre: the radius shrinks (in) or grows (out).
+            let radius = 20 - 10 * (direction == .in ? (travel + 1) / 2 : 1 - (travel + 1) / 2)
+            return (0..<fingers).map { i in
+                let angle = Double.pi * 0.85 + 2 * Double.pi * Double(i) / Double(fingers)
+                return (cx + cos(angle) * radius * 1.3, cy + sin(angle) * radius, alpha)
+            }
+        }
+    }
+}
+
+enum Modifiers {
+    /// Config names in the order keyboards show them, with their symbols.
+    static let all: [(name: String, symbol: String, label: String)] = [
+        ("control", "⌃", "Control"), ("option", "⌥", "Option"), ("shift", "⇧", "Shift"), ("cmd", "⌘", "Command"),
+    ]
+
+    static func symbols(_ names: [String]) -> [String] {
+        let flags = (try? KeyCodes.flags(for: names)) ?? []
+        let byFlag: [(CGEventFlags, String)] = [(.maskControl, "⌃"), (.maskAlternate, "⌥"), (.maskShift, "⇧"), (.maskCommand, "⌘")]
+        return byFlag.filter { flags.contains($0.0) }.map(\.1)
+    }
+
+    /// Canonical names in keyboard order.
+    static func ordered(_ names: Set<String>) -> [String] {
+        all.map(\.name).filter(names.contains)
+    }
+}

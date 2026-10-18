@@ -46,16 +46,22 @@ public enum ActionSpec: Codable, Equatable, CustomStringConvertible {
     /// How the menu shows it: "⌘@", "⌃⇧Tab", "Run: open -a Terminal".
     public var description: String {
         switch self {
-        case let .key(key, modifiers):
-            let flags = (try? KeyCodes.flags(for: modifiers)) ?? []
-            let symbols: [(CGEventFlags, String)] = [
-                (.maskSecondaryFn, "fn "), (.maskControl, "⌃"), (.maskAlternate, "⌥"), (.maskShift, "⇧"), (.maskCommand, "⌘"),
-            ]
-            let name = key.count == 1 ? key.uppercased() : key.prefix(1).uppercased() + key.dropFirst()
-            return symbols.filter { flags.contains($0.0) }.map(\.1).joined() + name
-        case let .shell(command):
-            return "Run: " + (command.count > 40 ? command.prefix(39) + "…" : command)
+        case .key: return keyCaps.joined()
+        case let .shell(command): return "Run: " + (command.count > 40 ? command.prefix(39) + "…" : command)
         }
+    }
+
+    /// The keys to draw for a key action, modifiers first: ["⌃", "⇧", "Tab"]. Empty for a shell action.
+    public var keyCaps: [String] {
+        guard case let .key(key, modifiers) = self else { return [] }
+        let flags = (try? KeyCodes.flags(for: modifiers)) ?? []
+        let symbols: [(CGEventFlags, String)] = [
+            (.maskSecondaryFn, "fn"), (.maskControl, "⌃"), (.maskAlternate, "⌥"), (.maskShift, "⇧"), (.maskCommand, "⌘"),
+        ]
+        let lowered = key.lowercased()
+        let name = KeyCodes.displayNames[lowered]
+            ?? (key.count == 1 ? key.uppercased() : key.prefix(1).uppercased() + key.dropFirst())
+        return symbols.filter { flags.contains($0.0) }.map(\.1) + [name]
     }
 
     /// Validates the spec and builds the runnable action.
@@ -162,6 +168,21 @@ public enum KeyCodes {
         "f1": 122, "f2": 120, "f3": 99, "f4": 118, "f5": 96, "f6": 97, "f7": 98, "f8": 100,
         "f9": 101, "f10": 109, "f11": 103, "f12": 111,
     ]
+
+    /// Short labels for named keys on drawn key caps.
+    public static let displayNames: [String: String] = [
+        "escape": "Esc", "esc": "Esc", "forwarddelete": "⌦", "pageup": "Page Up", "pagedown": "Page Down",
+        "left": "←", "right": "→", "up": "↑", "down": "↓",
+    ]
+
+    /// The config name of a layout-independent key ("return", "f5"), for recording shortcuts.
+    /// Nil for character keys, which are recorded by the character they type.
+    public static func name(forKeyCode code: CGKeyCode) -> String? {
+        // Several names share a code ("esc", "escape"): the first in this order wins.
+        let preferred = ["return", "enter", "tab", "space", "delete", "forwarddelete", "escape", "home", "end", "pageup", "pagedown",
+                         "left", "right", "down", "up"] + (1...12).map { "f\($0)" }
+        return preferred.first { named[$0] == code }
+    }
 
     /// Character positions on a US QWERTY keyboard: the fallback when the current layout
     /// has no key for a character (e.g. "z" on a Cyrillic layout, where shortcuts use QWERTY).

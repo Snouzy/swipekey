@@ -101,6 +101,12 @@ public struct Config: Codable, Equatable {
         try (data + Data("\n".utf8)).write(to: url, options: .atomic)
     }
 
+    /// Same as `update(_:to:at:)` for a Codable value, e.g. the whole `bindings` list.
+    public static func update<T: Encodable>(_ key: CodingKeys, toEncoded value: T, at url: URL) throws {
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(value), options: .fragmentsAllowed)
+        try update(key, to: json, at: url)
+    }
+
     public func jsonString() throws -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]

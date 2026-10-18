@@ -25,8 +25,8 @@ public struct Trigger: Hashable, CustomStringConvertible {
 
 /// Routes touch frames to per-device recognizers and runs the actions bound to the gestures they emit.
 public final class Engine {
-    private let actions: [Trigger: [Action]]
-    private let makeRecognizers: () -> [GestureRecognizer]
+    private var actions: [Trigger: [Action]]
+    private var makeRecognizers: () -> [GestureRecognizer]
     private let heldModifiers: () -> CGEventFlags
     private var recognizersByDevice: [UInt: [GestureRecognizer]] = [:]
     private var fingersByDevice: [UInt: Int] = [:]
@@ -60,6 +60,21 @@ public final class Engine {
         config: Config,
         heldModifiers: @escaping () -> CGEventFlags = { CGEventSource.flagsState(.combinedSessionState) }
     ) throws {
+        (actions, makeRecognizers) = try Self.build(config)
+        self.heldModifiers = heldModifiers
+    }
+
+    /// Applies new bindings and thresholds right away, without restarting (thread-safe).
+    /// Throws, and keeps the current ones, when the config is invalid.
+    public func reload(_ config: Config) throws {
+        let (actions, makeRecognizers) = try Self.build(config)
+        lock.lock(); defer { lock.unlock() }
+        self.actions = actions
+        self.makeRecognizers = makeRecognizers
+        recognizersByDevice = [:]
+    }
+
+    private static func build(_ config: Config) throws -> ([Trigger: [Action]], () -> [GestureRecognizer]) {
         var actions: [Trigger: [Action]] = [:]
         for binding in config.bindings {
             if try KeyCodes.flags(for: binding.holding).contains(.maskSecondaryFn) {
@@ -67,11 +82,9 @@ public final class Engine {
             }
             actions[try binding.trigger(), default: []].append(try binding.action.makeAction())
         }
-        self.actions = actions
-        self.heldModifiers = heldModifiers
         let swipeThreshold = config.swipeThreshold, pinchThreshold = config.pinchThreshold
         // New gesture types plug in here.
-        self.makeRecognizers = { [SwipeRecognizer(threshold: swipeThreshold), PinchRecognizer(threshold: pinchThreshold)] }
+        return (actions, { [SwipeRecognizer(threshold: swipeThreshold), PinchRecognizer(threshold: pinchThreshold)] })
     }
 
     /// Thread-safe: MultitouchSupport delivers each device's frames on its own thread.
@@ -96,7 +109,8 @@ public final class Engine {
 
     /// The actions bound to exactly this gesture and these held modifiers.
     public func actions(for trigger: Trigger) -> [Action] {
-        actions[trigger] ?? []
+        lock.lock(); defer { lock.unlock() }
+        return actions[trigger] ?? []
     }
 
     private func fire(_ trigger: Trigger) {

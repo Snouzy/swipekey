@@ -391,6 +391,51 @@ final class MenuSettingsTests: XCTestCase {
     }
 }
 
+final class SettingsWindowSupportTests: XCTestCase {
+    func testReloadAppliesNewBindingsRightAway() throws {
+        let up = Trigger(gesture: .swipe(fingers: 3, direction: .up), held: [])
+        let engine = try Engine(config: Config(bindings: []))
+        XCTAssertTrue(engine.actions(for: up).isEmpty)
+        try engine.reload(Config(bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: .key("return", modifiers: []))]))
+        XCTAssertEqual(engine.actions(for: up).count, 1)
+    }
+
+    func testInvalidReloadKeepsTheCurrentBindings() throws {
+        let up = Trigger(gesture: .swipe(fingers: 3, direction: .up), held: [])
+        let engine = try Engine(config: Config(bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: .key("return", modifiers: []))]))
+        XCTAssertThrowsError(try engine.reload(Config(bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: .key("nope-key", modifiers: []))])))
+        XCTAssertEqual(engine.actions(for: up).count, 1)
+    }
+
+    func testRecordedKeyCodesGetTheirConfigNames() {
+        XCTAssertEqual(KeyCodes.name(forKeyCode: 36), "return")
+        XCTAssertEqual(KeyCodes.name(forKeyCode: 53), "escape")
+        XCTAssertEqual(KeyCodes.name(forKeyCode: 51), "delete")
+        XCTAssertEqual(KeyCodes.name(forKeyCode: 96), "f5")
+        XCTAssertEqual(KeyCodes.name(forKeyCode: 126), "up")
+        XCTAssertNil(KeyCodes.name(forKeyCode: 10), "character keys are recorded by the character they type")
+    }
+
+    func testKeyCapsForDrawing() {
+        XCTAssertEqual(ActionSpec.key("tab", modifiers: ["shift", "control"]).keyCaps, ["⌃", "⇧", "Tab"])
+        XCTAssertEqual(ActionSpec.key("escape", modifiers: []).keyCaps, ["Esc"])
+        XCTAssertEqual(ActionSpec.key("up", modifiers: ["cmd"]).keyCaps, ["⌘", "↑"])
+        XCTAssertEqual(ActionSpec.shell("ls").keyCaps, [])
+    }
+
+    func testSavingBindingsKeepsTheRestOfTheFile() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("swipekey-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(#"{ "swipeThreshold": 0.09, "editor": "Zed", "bindings": [] }"#.utf8).write(to: url)
+        let bindings = [Binding(gesture: .pinch(fingers: 2, direction: .in), holding: ["cmd"], action: .key("@", modifiers: ["cmd"]))]
+        try Config.update(.bindings, toEncoded: bindings, at: url)
+        let config = try Config.load(from: url)
+        XCTAssertEqual(config.bindings, bindings)
+        XCTAssertEqual(config.swipeThreshold, 0.09)
+        XCTAssertEqual(config.editor, "Zed")
+    }
+}
+
 final class BlockScrollConfigTests: XCTestCase {
     func testDefaultsToThreeAndCanBeTurnedOff() throws {
         let plain = #"{"bindings":[]}"#, off = #"{"blockScrollWithFingers":0,"bindings":[]}"#

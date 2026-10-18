@@ -62,7 +62,6 @@ if !canPostEvents {
 
 let engine: Engine
 do { engine = try Engine(config: config) } catch { fail("\(error)") }
-engine.onGesture = { gesture in if debug { log("gesture: \(gesture)") } }
 engine.onActionError = { gesture, error in log("action for \(gesture) failed: \(error)") }
 
 guard let deviceCount = MultitouchSource.start(engine) else {
@@ -123,16 +122,25 @@ func reloadConfig() throws {
 // A background app (LSUIElement): no Dock icon, only the optional menu bar icon.
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
+let store = ConfigStore(config: config, url: configURL, engine: engine)
+let settingsWindow = SettingsWindow(store: store)
 var menuBar: MenuBar?
-if config.menuBarIcon {
-    let bar = MenuBar(engine: engine, config: config, configURL: configURL) {
-        do { try reloadConfig() } catch { menuBar?.show(error) }
+
+func showMenuBar(_ shown: Bool) {
+    if shown, menuBar == nil {
+        menuBar = MenuBar(store: store, reload: {
+            do { try reloadConfig() } catch { MenuBar.show(error) }
+        }, openSettings: settingsWindow.show)
+    } else if !shown {
+        menuBar?.remove()
+        menuBar = nil
     }
-    menuBar = bar
-    engine.onGesture = { trigger in
-        if debug { log("gesture: \(trigger)") }
-        bar.gestureFired(trigger)
-    }
+}
+showMenuBar(config.menuBarIcon)
+store.onMenuBarIconChange = showMenuBar
+engine.onGesture = { trigger in
+    if debug { log("gesture: \(trigger)") }
+    menuBar?.gestureFired(trigger)
 }
 
 signal(SIGINT, SIG_IGN)

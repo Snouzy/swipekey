@@ -43,7 +43,7 @@ Then, once:
 2. **Allow it.** `make permissions` opens System Settings → Privacy & Security → Accessibility and shows the app in Finder: drag `Swipekey.app` into the list.
 3. `make restart`, and swipe.
 
-Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, edit and reload the config, open the log, and quit. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
+Swipekey puts a small trackpad icon in the menu bar. From it you can pause and resume the gestures, see the last gesture it recognized and your bindings, open the settings window (⌘,), edit and reload the config, open the log, and quit. In the settings window you add, change and delete bindings without touching the JSON: pick the gesture, press the shortcut you want, save, and it applies right away. The icon dims while paused and turns into a warning sign if swipekey can't send keystrokes. Quit stops it until your next login; after a crash it restarts by itself.
 
 | Command | What it does |
 |---|---|
@@ -84,8 +84,8 @@ Swipekey puts a small trackpad icon in the menu bar. From it you can pause and r
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |
 | `pinchThreshold` | how much the fingers close or spread before a pinch fires, as a fraction of the trackpad (default `0.05`) |
 | `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
-| `menuBarIcon` | show the menu bar icon (default `true`). Unchecking *Settings → Show menu bar icon* sets it to `false`; set it back to `true` and `make restart` to see the icon again |
-| `editor` | app that *Edit config…* opens the file with, e.g. `"Cursor"` or `"Visual Studio Code"` (default: your default app for JSON). Also set from *Settings → Open config with* |
+| `menuBarIcon` | show the menu bar icon (default `true`, also in the settings window). Set it back to `true` and `make restart` if you hid it and want it back |
+| `editor` | app that *Edit config…* opens the file with, e.g. `"Cursor"` or `"Visual Studio Code"` (default: your default app for JSON). Also set from the menu's *Open config with* |
 | `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipe below |
 
 ## Examples
