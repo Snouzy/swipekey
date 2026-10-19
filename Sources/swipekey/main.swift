@@ -67,6 +67,7 @@ if !canPostEvents {
 let engine: Engine
 do { engine = try Engine(config: config) } catch { fail("\(error)") }
 engine.onActionError = { gesture, error in log("action for \(gesture) failed: \(error)") }
+engine.onNearMiss = { miss in log("near miss: \(miss)") }
 
 guard let deviceCount = MultitouchSource.start(engine) else {
     fail("could not load MultitouchSupport.framework")

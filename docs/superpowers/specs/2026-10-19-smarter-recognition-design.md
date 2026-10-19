@@ -1,6 +1,20 @@
 # Smarter gesture recognition: design
 
-Date: 2026-10-19. Status: draft, waiting for Mathias's approval.
+Date: 2026-10-19. Status: approved; step 1 implemented on branch `smarter-recognition`.
+
+**Step 1 outcome:** on the 163 real sessions the probe logged (169 swipes: up, down, left, right,
+thumb resting), 168 fire as meant (148 before), with no wrong-direction fire. Final values:
+settle 0.1 s, flick at 0.5 × threshold and ≥ 1.0 units/s over 0.05 s, agreeFraction 0.25,
+direction on physical lengths with ratio 1.2 for 3+ fingers and 2.0 for 2 fingers (after the final review), an early lift holding for 0.1 s at most. Two changes
+from this document, both driven by the real data: direction now uses millimetres (item 7 was
+deferred), and the thumb rule uses motion (a resting finger), not contact size. Pinch got settle
+and bound-only, not the early-lift rule (a lift changes the spread). Every decision is in the
+plan's ledger.
+
+**Follow-up, same day:** horizontal 2-finger scrolling fired ⌘←/⌘→ (the old recognizer fires 4
+times in 15 s of Mathias's recorded scrolling). 2-finger swipes now fire on lift, only when quick
+(≥ 0.8 units/s), short (≤ 0.35 s) and with both fingers landing within 0.15 s. On the recording:
+8/8 left, 11/11 right, 0 during scrolling (`Fixtures/two-finger.json`).
 
 ## Why
 

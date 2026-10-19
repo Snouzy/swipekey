@@ -13,7 +13,7 @@ public enum MultitouchSource {
     /// Calls `handler` with every frame of every device, on MultitouchSupport threads.
     public static func start(_ handler: @escaping (TouchFrame, UInt) -> Void) -> Int? {
         self.handler = handler
-        let count = sk_multitouch_start { device, touches, count, timestamp in
+        let count = sk_multitouch_start { device, touches, count, timestamp, aspect in
             guard let handler = MultitouchSource.handler else { return }
             let buffer = UnsafeBufferPointer(start: touches, count: Int(count))
             let frame = TouchFrame(
@@ -23,7 +23,8 @@ public enum MultitouchSource {
                         size: Double($0.size), majorAxis: Double($0.majorAxis), minorAxis: Double($0.minorAxis)
                     )
                 },
-                timestamp: timestamp
+                timestamp: timestamp,
+                aspect: aspect
             )
             handler(frame, device)
         }

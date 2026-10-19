@@ -35,11 +35,26 @@ static void (*MTRegisterContactFrameCallback)(MTDeviceRef, MTContactCallback);
 static void (*MTUnregisterContactFrameCallback)(MTDeviceRef, MTContactCallback);
 static void (*MTDeviceStart)(MTDeviceRef, int);
 static void (*MTDeviceStop)(MTDeviceRef);
+// Optional: the sensor's size in hundredths of a millimetre.
+static int (*MTDeviceGetSensorSurfaceDimensions)(MTDeviceRef, int *, int *);
 
 static SKFrameHandler frameHandler;
 static CFArrayRef devices;
 
 #define SK_MAX_TOUCHES 32
+#define SK_MAX_DEVICES 16
+
+// Width over height of each started device, filled once at start and only read afterwards.
+static MTDeviceRef aspectDevices[SK_MAX_DEVICES];
+static double aspectValues[SK_MAX_DEVICES];
+static int aspectCount;
+
+static double aspectOf(MTDeviceRef device) {
+    for (int i = 0; i < aspectCount; i++) {
+        if (aspectDevices[i] == device) return aspectValues[i];
+    }
+    return 1;
+}
 
 static int contactCallback(MTDeviceRef device, MTTouch *data, int count, double timestamp, int frame) {
     (void)frame;
@@ -57,7 +72,7 @@ static int contactCallback(MTDeviceRef device, MTTouch *data, int count, double 
             .minorAxis = data[i].minorAxis,
         };
     }
-    frameHandler((uintptr_t)device, touches, n, timestamp);
+    frameHandler((uintptr_t)device, touches, n, timestamp, aspectOf(device));
     return 0;
 }
 
@@ -69,6 +84,7 @@ static int loadSymbols(void) {
     MTUnregisterContactFrameCallback = dlsym(lib, "MTUnregisterContactFrameCallback");
     MTDeviceStart = dlsym(lib, "MTDeviceStart");
     MTDeviceStop = dlsym(lib, "MTDeviceStop");
+    MTDeviceGetSensorSurfaceDimensions = dlsym(lib, "MTDeviceGetSensorSurfaceDimensions");
     return MTDeviceCreateList && MTRegisterContactFrameCallback && MTUnregisterContactFrameCallback
         && MTDeviceStart && MTDeviceStop;
 }
@@ -80,6 +96,15 @@ int32_t sk_multitouch_start(SKFrameHandler handler) {
     devices = MTDeviceCreateList();
     if (!devices) return 0;
     CFIndex count = CFArrayGetCount(devices);
+    aspectCount = 0;
+    for (CFIndex i = 0; i < count && aspectCount < SK_MAX_DEVICES; i++) {
+        MTDeviceRef device = (MTDeviceRef)CFArrayGetValueAtIndex(devices, i);
+        int width = 0, height = 0;
+        if (MTDeviceGetSensorSurfaceDimensions) MTDeviceGetSensorSurfaceDimensions(device, &width, &height);
+        aspectDevices[aspectCount] = device;
+        aspectValues[aspectCount] = width > 0 && height > 0 ? (double)width / height : 1;
+        aspectCount++;
+    }
     for (CFIndex i = 0; i < count; i++) {
         MTDeviceRef device = (MTDeviceRef)CFArrayGetValueAtIndex(devices, i);
         MTRegisterContactFrameCallback(device, contactCallback);

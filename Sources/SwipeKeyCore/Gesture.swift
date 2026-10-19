@@ -27,10 +27,14 @@ public struct Touch: Equatable {
 public struct TouchFrame: Equatable {
     public var touches: [Touch]
     public var timestamp: Double
+    /// The trackpad's width over its height (1 when unknown). Normalized x and y cover different
+    /// lengths, so directions are compared in real proportions.
+    public var aspect: Double
 
-    public init(touches: [Touch], timestamp: Double) {
+    public init(touches: [Touch], timestamp: Double, aspect: Double = 1) {
         self.touches = touches
         self.timestamp = timestamp
+        self.aspect = aspect
     }
 }
 

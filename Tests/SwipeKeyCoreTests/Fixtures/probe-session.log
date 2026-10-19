@@ -1,0 +1,849 @@
+threshold 0.05
+*** Recognized (0x6d) family*** (24 cols X 18 rows)
+probe ready: swipe now
+#1 OK   0.18s fired=["3-finger swipe up"]
+    2f  23ms dx+0.002 dy+0.007
+    3f 144ms dx+0.012 dy+0.214
+    2f   0ms dx+0.000 dy+0.000
+#2 OK   0.16s fired=["3-finger swipe up"]
+    1f  16ms dx+0.001 dy+0.011
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx+0.025 dy+0.213
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#3 OK   0.23s fired=["3-finger swipe up"]
+    1f  64ms dx+0.000 dy-0.012
+    2f   7ms dx+0.000 dy+0.004
+    3f 127ms dx-0.025 dy+0.210
+    1f   7ms dx-0.002 dy+0.005
+#4 OK   0.17s fired=["3-finger swipe up"]
+    1f   8ms dx-0.001 dy+0.000
+    2f   8ms dx-0.001 dy+0.001
+    3f 128ms dx-0.012 dy+0.201
+    2f   0ms dx+0.000 dy+0.000
+#5 OK   0.18s fired=["3-finger swipe up"]
+    1f  23ms dx-0.000 dy+0.002
+    3f 135ms dx-0.000 dy+0.229
+    1f   0ms dx+0.000 dy+0.000
+#6 OK   0.13s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f 103ms dx+0.020 dy+0.237
+    1f   0ms dx+0.000 dy+0.000
+#7 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx+0.001 dy+0.006
+    2f   0ms dx+0.000 dy+0.000
+    3f  96ms dx+0.010 dy+0.181
+    1f   0ms dx+0.000 dy+0.000
+#8 OK   0.11s fired=["3-finger swipe up"]
+    1f  16ms dx-0.005 dy+0.016
+    2f   8ms dx-0.002 dy+0.019
+    3f  72ms dx-0.017 dy+0.179
+#9 OK   0.12s fired=["3-finger swipe up"]
+    1f  16ms dx-0.003 dy+0.014
+    3f  88ms dx-0.022 dy+0.241
+    1f   0ms dx+0.000 dy+0.000
+#10 OK   0.12s fired=["3-finger swipe up"]
+    1f  24ms dx-0.000 dy+0.007
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx-0.037 dy+0.155
+    2f   0ms dx+0.000 dy+0.000
+#11 OK   0.14s fired=["3-finger swipe up"]
+    1f   7ms dx+0.001 dy+0.006
+    3f 119ms dx-0.002 dy+0.273
+#12 OK   0.13s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  95ms dx+0.010 dy+0.279
+    2f   7ms dx-0.001 dy+0.014
+#13 OK   0.19s fired=["3-finger swipe up"]
+    1f   8ms dx-0.001 dy+0.004
+    2f   0ms dx+0.000 dy+0.000
+    3f 111ms dx+0.013 dy+0.286
+    2f  23ms dx-0.002 dy+0.042
+    1f  16ms dx+0.001 dy+0.022
+#14 OK   0.10s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   7ms dx-0.004 dy+0.033
+    3f  64ms dx-0.014 dy+0.171
+    2f   7ms dx-0.001 dy+0.019
+#15 OK   0.15s fired=["3-finger swipe up"]
+    1f   7ms dx-0.001 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx+0.008 dy+0.323
+    1f   8ms dx+0.002 dy+0.008
+#16 OK   0.16s fired=["3-finger swipe up"]
+    1f  24ms dx+0.001 dy-0.010
+    2f   0ms dx+0.000 dy+0.000
+    3f 111ms dx-0.023 dy+0.331
+    2f   0ms dx+0.000 dy+0.000
+#17 OK   0.12s fired=["3-finger swipe up"]
+    1f   8ms dx+0.003 dy+0.008
+    2f   0ms dx+0.000 dy+0.000
+    3f  79ms dx+0.006 dy+0.178
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#18 OK   0.22s fired=["3-finger swipe up"]
+    1f  16ms dx-0.000 dy-0.001
+    2f  32ms dx-0.001 dy+0.008
+    3f 143ms dx-0.061 dy+0.372
+    1f   0ms dx+0.000 dy+0.000
+#19 OK   0.15s fired=["3-finger swipe up"]
+    1f   8ms dx+0.002 dy+0.013
+    3f 112ms dx-0.082 dy+0.382
+    2f   0ms dx+0.000 dy+0.000
+    1f   7ms dx-0.002 dy+0.009
+#20 OK   0.18s fired=["3-finger swipe up"]
+    1f  40ms dx+0.004 dy+0.017
+    2f   0ms dx+0.000 dy+0.000
+    3f 111ms dx-0.039 dy+0.305
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#21 OK   0.16s fired=["3-finger swipe up"]
+    1f  32ms dx-0.003 dy+0.014
+    3f  96ms dx-0.014 dy+0.126
+    1f  16ms dx-0.003 dy+0.009
+#22 OK   0.19s fired=["3-finger swipe up"]
+    1f  32ms dx-0.001 dy+0.004
+    2f   0ms dx+0.000 dy+0.000
+    3f 119ms dx+0.000 dy+0.192
+    2f   7ms dx-0.001 dy+0.014
+    1f   0ms dx+0.000 dy+0.000
+#23 OK   0.24s fired=["3-finger swipe up"]
+    1f  39ms dx+0.001 dy+0.004
+    2f   0ms dx+0.000 dy+0.000
+    3f 168ms dx+0.011 dy+0.303
+    2f   7ms dx-0.003 dy+0.009
+#24 OK   0.26s fired=["3-finger swipe up"]
+    1f  39ms dx+0.007 dy+0.002
+    2f  16ms dx+0.006 dy+0.017
+    3f 159ms dx-0.043 dy+0.239
+    2f   0ms dx+0.000 dy+0.000
+    1f   8ms dx-0.002 dy+0.004
+#25 OK   0.21s fired=["3-finger swipe up"]
+    1f  24ms dx+0.000 dy+0.007
+    3f 135ms dx+0.023 dy+0.243
+    2f   7ms dx+0.000 dy+0.010
+    1f  16ms dx+0.001 dy+0.021
+#26 OK   0.18s fired=["3-finger swipe up"]
+    1f  16ms dx+0.001 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f 128ms dx+0.010 dy+0.239
+    2f   8ms dx-0.000 dy+0.012
+    1f   0ms dx+0.000 dy+0.000
+#27 OK   0.19s fired=["3-finger swipe up"]
+    1f  24ms dx+0.004 dy-0.017
+    2f   8ms dx+0.003 dy+0.000
+    3f 135ms dx+0.034 dy+0.315
+    2f   0ms dx+0.000 dy+0.000
+#28 OK   0.09s fired=["3-finger swipe up"]
+    3f  80ms dx-0.017 dy+0.157
+    1f   0ms dx+0.000 dy+0.000
+#29 OK   0.12s fired=["3-finger swipe up"]
+    1f  16ms dx+0.003 dy+0.014
+    3f  87ms dx-0.001 dy+0.148
+    1f   0ms dx+0.000 dy+0.000
+#30 OK   0.17s fired=["3-finger swipe up"]
+    1f  23ms dx+0.004 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f 103ms dx+0.009 dy+0.240
+    2f  16ms dx+0.002 dy+0.041
+#31 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx+0.002 dy+0.010
+    2f   7ms dx+0.003 dy+0.015
+    3f  96ms dx+0.017 dy+0.310
+    1f   0ms dx+0.000 dy+0.000
+#32 OK   0.17s fired=["3-finger swipe up"]
+    1f  16ms dx-0.001 dy+0.000
+    2f  32ms dx+0.002 dy+0.022
+    3f  88ms dx+0.021 dy+0.249
+    1f   8ms dx+0.002 dy+0.022
+#33 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx+0.003 dy+0.009
+    2f   0ms dx+0.000 dy+0.000
+    3f  79ms dx+0.005 dy+0.280
+    2f   0ms dx+0.000 dy+0.000
+    1f   8ms dx+0.000 dy+0.011
+#34 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx+0.001 dy+0.012
+    2f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.020 dy+0.241
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#35 OK   0.13s fired=["3-finger swipe up"]
+    1f  24ms dx+0.009 dy+0.019
+    2f   0ms dx+0.000 dy+0.000
+    3f  79ms dx+0.026 dy+0.260
+    1f   0ms dx+0.000 dy+0.000
+#36 MISS 0.09s fired=[]
+    2f  32ms dx-0.006 dy+0.035
+    3f  16ms dx-0.009 dy+0.034
+    2f   7ms dx-0.004 dy+0.014
+    1f   7ms dx-0.004 dy+0.013
+#37 OK   0.14s fired=["3-finger swipe up"]
+    1f  32ms dx+0.001 dy-0.005
+    3f  80ms dx-0.029 dy+0.140
+    2f   7ms dx-0.003 dy+0.014
+    1f   0ms dx+0.000 dy+0.000
+#38 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx-0.002 dy-0.002
+    2f  16ms dx-0.005 dy+0.024
+    3f  79ms dx-0.046 dy+0.215
+    2f   0ms dx+0.000 dy+0.000
+#39 MISS 0.16s fired=["2-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  64ms dx+0.001 dy+0.079
+    3f  72ms dx-0.063 dy+0.203
+    2f   0ms dx+0.000 dy+0.000
+#40 OK   0.13s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  16ms dx-0.001 dy+0.008
+    3f  87ms dx-0.075 dy+0.255
+    1f   0ms dx+0.000 dy+0.000
+#41 OK   0.20s fired=["3-finger swipe up"]
+    1f 119ms dx-0.054 dy+0.073
+    2f   0ms dx+0.000 dy+0.000
+    3f  55ms dx-0.029 dy+0.068
+    2f   0ms dx+0.000 dy+0.000
+#42 OK   0.15s fired=["3-finger swipe up"]
+    1f  23ms dx+0.001 dy+0.010
+    2f   0ms dx+0.000 dy+0.000
+    3f  96ms dx-0.060 dy+0.146
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#43 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx+0.000 dy+0.004
+    3f 103ms dx-0.021 dy+0.186
+    1f   8ms dx-0.001 dy+0.020
+#44 OK   0.14s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  80ms dx+0.005 dy+0.102
+    2f  16ms dx-0.002 dy+0.035
+    1f   7ms dx+0.000 dy+0.011
+#45 OK   0.14s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.028 dy+0.062
+    2f   7ms dx-0.010 dy+0.015
+    1f  15ms dx-0.022 dy+0.039
+#46 OK   0.14s fired=["3-finger swipe up"]
+    1f   7ms dx-0.001 dy+0.001
+    2f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.035 dy+0.164
+    2f   0ms dx+0.000 dy+0.000
+    1f  16ms dx-0.008 dy+0.027
+#47 OK   0.15s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    3f 103ms dx-0.012 dy+0.197
+    2f   0ms dx+0.000 dy+0.000
+    1f  23ms dx+0.005 dy+0.043
+#48 OK   0.10s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.008 dy+0.209
+#49 OK   0.14s fired=["3-finger swipe up"]
+    1f   8ms dx+0.000 dy+0.014
+    2f   0ms dx+0.000 dy+0.000
+    3f  95ms dx-0.053 dy+0.160
+    2f   7ms dx-0.005 dy+0.012
+    1f   0ms dx+0.000 dy+0.000
+#50 OK   0.15s fired=["3-finger swipe up"]
+    1f  32ms dx+0.013 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  95ms dx-0.039 dy+0.154
+    1f   0ms dx+0.000 dy+0.000
+#51 OK   0.14s fired=["3-finger swipe up"]
+    1f  24ms dx-0.006 dy+0.033
+    3f  96ms dx-0.052 dy+0.159
+    1f   8ms dx-0.003 dy+0.008
+#52 OK   0.12s fired=["3-finger swipe up"]
+    1f   7ms dx-0.004 dy+0.009
+    2f   7ms dx-0.001 dy+0.017
+    3f  80ms dx-0.029 dy+0.148
+    2f   0ms dx+0.000 dy+0.000
+#53 OK   0.18s fired=["3-finger swipe up"]
+    1f  79ms dx-0.002 dy+0.033
+    3f  32ms dx-0.027 dy+0.085
+    1f  55ms dx-0.054 dy+0.120
+#54 OK   0.14s fired=["3-finger swipe up"]
+    1f  32ms dx-0.000 dy+0.027
+    3f  87ms dx-0.041 dy+0.164
+    2f   8ms dx-0.003 dy+0.012
+#55 OK   0.14s fired=["3-finger swipe up"]
+    1f  15ms dx-0.006 dy+0.001
+    2f   0ms dx+0.000 dy+0.000
+    3f 104ms dx-0.057 dy+0.241
+    1f   0ms dx+0.000 dy+0.000
+#56 OK   0.18s fired=["3-finger swipe up"]
+    1f   7ms dx-0.001 dy+0.009
+    2f   7ms dx+0.000 dy+0.009
+    3f  96ms dx-0.002 dy+0.175
+    2f   8ms dx-0.001 dy+0.023
+    1f  23ms dx-0.006 dy+0.034
+#57 OK   0.17s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f 143ms dx-0.040 dy+0.281
+    1f   0ms dx+0.000 dy+0.000
+#58 OK   0.16s fired=["3-finger swipe up"]
+    1f   7ms dx-0.003 dy+0.010
+    3f 135ms dx-0.053 dy+0.227
+    1f   0ms dx+0.000 dy+0.000
+#59 OK   0.21s fired=["3-finger swipe up"]
+    1f  24ms dx-0.002 dy+0.001
+    2f   0ms dx+0.000 dy+0.000
+    3f 152ms dx-0.094 dy+0.245
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#60 OK   0.23s fired=["3-finger swipe up"]
+    1f  23ms dx-0.001 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f 168ms dx-0.041 dy+0.280
+    2f  16ms dx-0.007 dy+0.014
+#61 OK   0.22s fired=["3-finger swipe up"]
+    1f  39ms dx-0.000 dy+0.006
+    3f 152ms dx-0.059 dy+0.215
+    2f   7ms dx-0.003 dy+0.005
+#62 OK   0.23s fired=["3-finger swipe up"]
+    1f   8ms dx+0.000 dy+0.001
+    2f   8ms dx-0.002 dy+0.004
+    3f 176ms dx-0.063 dy+0.266
+    1f  16ms dx-0.008 dy+0.008
+#63 MISS 0.18s fired=["3-finger swipe down"]
+    1f  32ms dx+0.001 dy-0.014
+    2f   0ms dx+0.000 dy+0.000
+    3f 119ms dx+0.020 dy-0.270
+    2f   0ms dx+0.000 dy+0.000
+#64 MISS 0.14s fired=["3-finger swipe down"]
+    2f  16ms dx-0.004 dy+0.010
+    3f  96ms dx+0.004 dy-0.197
+    2f  16ms dx-0.000 dy-0.047
+#65 MISS 0.12s fired=["3-finger swipe down"]
+    1f   7ms dx-0.001 dy+0.001
+    3f  96ms dx+0.024 dy-0.184
+    2f   0ms dx+0.000 dy+0.000
+#66 MISS 0.11s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  79ms dx+0.060 dy-0.180
+    2f   0ms dx+0.000 dy+0.000
+    1f   8ms dx+0.005 dy-0.015
+#67 MISS 0.14s fired=["3-finger swipe down"]
+    1f  64ms dx+0.011 dy-0.003
+    3f  48ms dx+0.046 dy-0.122
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#68 MISS 0.10s fired=["3-finger swipe down"]
+    2f  16ms dx-0.005 dy-0.018
+    3f  64ms dx+0.018 dy-0.216
+    1f   0ms dx+0.000 dy+0.000
+#69 MISS 0.14s fired=["3-finger swipe down"]
+    1f   8ms dx+0.000 dy-0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f  48ms dx+0.049 dy-0.129
+    2f  16ms dx+0.013 dy-0.044
+    1f  40ms dx+0.017 dy-0.048
+#70 MISS 0.09s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  64ms dx+0.060 dy-0.168
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#71 MISS 0.10s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  55ms dx+0.044 dy-0.143
+    2f   8ms dx+0.012 dy-0.043
+    1f   0ms dx+0.000 dy+0.000
+#72 MISS 0.09s fired=["3-finger swipe down"]
+    2f   8ms dx-0.002 dy-0.001
+    3f  64ms dx+0.056 dy-0.151
+    1f   0ms dx+0.000 dy+0.000
+#73 MISS 0.20s fired=["3-finger swipe down"]
+    1f  64ms dx-0.019 dy+0.011
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx+0.035 dy-0.106
+    2f  32ms dx+0.029 dy-0.090
+    1f   8ms dx+0.004 dy-0.011
+#74 MISS 0.09s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  55ms dx+0.065 dy-0.161
+    1f   7ms dx+0.009 dy-0.024
+#75 MISS 0.10s fired=["3-finger swipe down"]
+    1f  24ms dx+0.005 dy-0.008
+    3f  40ms dx+0.030 dy-0.082
+    2f   0ms dx+0.000 dy+0.000
+    1f  15ms dx+0.021 dy-0.047
+#76 MISS 0.08s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  32ms dx+0.036 dy-0.080
+    2f   8ms dx+0.016 dy-0.033
+    1f   8ms dx+0.019 dy-0.045
+#77 MISS 0.10s fired=["3-finger swipe down"]
+    1f  16ms dx+0.004 dy-0.010
+    2f   7ms dx+0.005 dy-0.012
+    3f  55ms dx+0.055 dy-0.191
+    1f   0ms dx+0.000 dy+0.000
+#78 MISS 0.13s fired=["3-finger swipe down"]
+    1f  16ms dx-0.000 dy-0.011
+    3f  55ms dx+0.031 dy-0.141
+    2f  16ms dx+0.017 dy-0.074
+    1f  16ms dx+0.009 dy-0.046
+#79 MISS 0.13s fired=["3-finger swipe down"]
+    1f  16ms dx-0.002 dy-0.004
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx+0.052 dy-0.217
+    2f   7ms dx+0.007 dy-0.027
+    1f   7ms dx+0.005 dy-0.016
+#80 MISS 0.12s fired=["3-finger swipe down"]
+    1f  16ms dx-0.000 dy-0.007
+    2f   0ms dx+0.000 dy+0.000
+    3f  63ms dx+0.028 dy-0.136
+    2f   7ms dx+0.008 dy-0.027
+    1f   0ms dx+0.000 dy+0.000
+#81 MISS 0.12s fired=["3-finger swipe down"]
+    1f   7ms dx+0.000 dy+0.001
+    3f  87ms dx+0.051 dy-0.225
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#82 MISS 0.52s fired=["3-finger swipe down"]
+    1f  23ms dx+0.000 dy-0.001
+    2f   8ms dx-0.000 dy-0.000
+    3f 448ms dx+0.063 dy-0.248
+    1f  16ms dx+0.001 dy-0.007
+#83 MISS 0.41s fired=["2-finger swipe down"]
+    1f  23ms dx+0.007 dy-0.014
+    2f  95ms dx+0.021 dy-0.064
+    3f 223ms dx+0.061 dy-0.199
+    2f  32ms dx+0.008 dy-0.021
+    1f   0ms dx+0.000 dy+0.000
+#84 MISS 0.38s fired=["3-finger swipe down"]
+    1f  40ms dx+0.002 dy-0.008
+    2f  32ms dx+0.003 dy-0.011
+    3f 232ms dx+0.069 dy-0.248
+    2f  23ms dx+0.011 dy-0.025
+    1f  23ms dx+0.007 dy-0.022
+#85 MISS 0.34s fired=["3-finger swipe down"]
+    1f  64ms dx+0.007 dy-0.025
+    2f  32ms dx+0.005 dy-0.013
+    3f 207ms dx+0.060 dy-0.229
+    2f  15ms dx+0.005 dy-0.013
+#86 MISS 0.34s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  23ms dx-0.003 dy-0.006
+    3f 279ms dx+0.007 dy-0.358
+    1f   7ms dx+0.002 dy-0.008
+#87 MISS 0.28s fired=["3-finger swipe down"]
+    1f  16ms dx-0.002 dy-0.002
+    2f   0ms dx+0.000 dy+0.000
+    3f 248ms dx+0.098 dy-0.461
+#88 OK   0.12s fired=["3-finger swipe up"]
+    3f 112ms dx+0.017 dy+0.332
+    2f   0ms dx+0.000 dy+0.000
+#89 OK   0.11s fired=["3-finger swipe up"]
+    1f   7ms dx-0.002 dy+0.001
+    2f   7ms dx+0.002 dy+0.011
+    3f  64ms dx-0.023 dy+0.138
+    2f   8ms dx-0.005 dy+0.023
+#90 OK   0.13s fired=["3-finger swipe up"]
+    1f  23ms dx-0.002 dy+0.009
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx-0.039 dy+0.175
+    2f   7ms dx-0.006 dy+0.024
+#91 OK   0.14s fired=["3-finger swipe up"]
+    1f  23ms dx-0.001 dy+0.022
+    2f   0ms dx+0.000 dy+0.000
+    3f  72ms dx-0.030 dy+0.174
+    2f   8ms dx-0.006 dy+0.030
+    1f   7ms dx-0.002 dy+0.011
+#92 OK   0.13s fired=["3-finger swipe up"]
+    1f   7ms dx-0.002 dy+0.001
+    2f   0ms dx+0.000 dy+0.000
+    3f  80ms dx-0.038 dy+0.178
+    2f   0ms dx+0.000 dy+0.000
+    1f   7ms dx-0.004 dy+0.012
+#93 OK   0.14s fired=["3-finger swipe up"]
+    1f  16ms dx-0.000 dy+0.005
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx-0.031 dy+0.167
+    1f  23ms dx-0.012 dy+0.040
+#94 OK   0.10s fired=["3-finger swipe up"]
+    1f  23ms dx-0.001 dy+0.007
+    2f   0ms dx+0.000 dy+0.000
+    3f  48ms dx-0.055 dy+0.108
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#95 OK   0.11s fired=["3-finger swipe up"]
+    1f  16ms dx+0.003 dy+0.009
+    3f  80ms dx-0.043 dy+0.192
+    1f   0ms dx+0.000 dy+0.000
+#96 OK   0.15s fired=["3-finger swipe up"]
+    1f  55ms dx+0.006 dy-0.007
+    3f  87ms dx-0.033 dy+0.202
+#97 OK   0.50s fired=["3-finger swipe up"]
+    1f  39ms dx+0.004 dy+0.007
+    2f  80ms dx-0.005 dy+0.041
+    3f 343ms dx-0.066 dy+0.294
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#98 OK   0.43s fired=["3-finger swipe up"]
+    1f  32ms dx+0.005 dy+0.005
+    3f 359ms dx-0.064 dy+0.395
+    2f   0ms dx+0.000 dy+0.000
+    1f  16ms dx-0.002 dy+0.003
+#99 OK   0.37s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   8ms dx+0.002 dy+0.008
+    3f 328ms dx-0.070 dy+0.429
+    2f   8ms dx-0.001 dy+0.000
+#100 OK   0.48s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  40ms dx-0.000 dy+0.023
+    3f 400ms dx-0.081 dy+0.390
+    2f   8ms dx-0.001 dy-0.001
+    1f   0ms dx+0.000 dy+0.000
+#101 OK   0.18s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  32ms dx+0.005 dy+0.018
+    3f  88ms dx-0.020 dy+0.181
+    2f  23ms dx-0.011 dy+0.064
+    1f   7ms dx-0.003 dy+0.012
+#102 OK   0.23s fired=["3-finger swipe up"]
+    1f  23ms dx+0.000 dy+0.002
+    2f  23ms dx-0.001 dy+0.009
+    3f 143ms dx-0.053 dy+0.256
+    2f   0ms dx+0.000 dy+0.000
+    1f   8ms dx-0.003 dy+0.004
+#103 MISS 0.16s fired=["3-finger swipe down"]
+    1f   8ms dx+0.000 dy-0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f 103ms dx+0.007 dy-0.261
+    2f   0ms dx+0.000 dy+0.000
+    1f  16ms dx-0.004 dy-0.032
+#104 MISS 0.13s fired=["3-finger swipe down"]
+    1f   8ms dx-0.000 dy+0.001
+    2f   8ms dx-0.000 dy-0.002
+    3f  80ms dx-0.010 dy-0.146
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#105 MISS 0.11s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  87ms dx+0.010 dy-0.270
+    2f   7ms dx+0.001 dy-0.023
+#106 MISS 0.12s fired=["3-finger swipe down"]
+    1f   8ms dx-0.000 dy-0.000
+    3f  80ms dx+0.010 dy-0.170
+    2f  16ms dx+0.006 dy-0.051
+#107 MISS 0.18s fired=[]
+    1f  16ms dx+0.004 dy-0.014
+    2f   8ms dx+0.002 dy-0.007
+    3f  24ms dx+0.011 dy-0.042
+    2f  16ms dx+0.009 dy-0.037
+    1f  80ms dx+0.036 dy-0.131
+#108 MISS 0.10s fired=["3-finger swipe down"]
+    2f   0ms dx+0.000 dy+0.000
+    3f  72ms dx+0.021 dy-0.190
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#109 MISS 0.12s fired=["3-finger swipe down"]
+    1f   8ms dx+0.001 dy-0.009
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx+0.010 dy-0.174
+    2f   8ms dx+0.001 dy-0.026
+    1f   0ms dx+0.000 dy+0.000
+#110 MISS 0.10s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx-0.000 dy-0.137
+    2f   8ms dx-0.001 dy-0.022
+#111 MISS 0.12s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    3f  79ms dx+0.014 dy-0.157
+    2f   7ms dx+0.003 dy-0.023
+    1f   7ms dx+0.002 dy-0.015
+#112 MISS 0.11s fired=["3-finger swipe down"]
+    1f   8ms dx+0.000 dy-0.003
+    3f  80ms dx+0.020 dy-0.207
+    2f   8ms dx+0.003 dy-0.031
+#113 MISS 0.45s fired=["3-finger swipe down"]
+    2f   7ms dx-0.001 dy+0.001
+    3f 415ms dx+0.087 dy-0.519
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#114 MISS 0.22s fired=["3-finger swipe down"]
+    1f  64ms dx+0.005 dy-0.000
+    2f  31ms dx+0.002 dy-0.007
+    3f 103ms dx+0.015 dy-0.249
+    1f   0ms dx+0.000 dy+0.000
+#115 MISS 0.08s fired=["3-finger swipe down"]
+    2f   0ms dx+0.000 dy+0.000
+    3f  55ms dx+0.034 dy-0.088
+    2f   7ms dx+0.007 dy-0.022
+#116 MISS 0.17s fired=["3-finger swipe down"]
+    2f   0ms dx+0.000 dy+0.000
+    3f  87ms dx+0.042 dy-0.132
+    2f  23ms dx+0.011 dy-0.032
+    1f  32ms dx+0.006 dy-0.018
+#117 MISS 0.13s fired=["3-finger swipe down"]
+    1f   7ms dx+0.000 dy-0.001
+    3f  95ms dx+0.033 dy-0.130
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#118 MISS 0.16s fired=["3-finger swipe down"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx+0.043 dy-0.198
+    1f  23ms dx+0.007 dy-0.040
+#119 MISS 0.09s fired=["3-finger swipe left"]
+    3f  87ms dx-0.173 dy+0.014
+#120 MISS 0.14s fired=["3-finger swipe left"]
+    1f  16ms dx-0.014 dy+0.018
+    2f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.144 dy+0.061
+    1f   8ms dx-0.009 dy-0.001
+#121 MISS 0.14s fired=[]
+    1f  23ms dx-0.015 dy+0.016
+    2f   0ms dx+0.000 dy+0.000
+    3f  87ms dx-0.127 dy+0.114
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#122 MISS 0.20s fired=["3-finger swipe left"]
+    1f  32ms dx-0.009 dy+0.000
+    2f  23ms dx-0.020 dy+0.018
+    3f  95ms dx-0.141 dy+0.028
+    2f  16ms dx-0.013 dy-0.010
+    1f   0ms dx+0.000 dy+0.000
+#123 MISS 0.15s fired=["3-finger swipe left"]
+    1f  23ms dx-0.010 dy+0.007
+    2f   7ms dx-0.009 dy+0.010
+    3f  87ms dx-0.128 dy+0.032
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#124 MISS 0.12s fired=["3-finger swipe left"]
+    1f  16ms dx-0.006 dy+0.014
+    2f   0ms dx+0.000 dy+0.000
+    3f  80ms dx-0.120 dy+0.049
+    1f   0ms dx+0.000 dy+0.000
+#125 MISS 0.12s fired=["3-finger swipe left"]
+    1f   0ms dx+0.000 dy+0.000
+    3f 112ms dx-0.157 dy-0.030
+#126 MISS 0.14s fired=["3-finger swipe left"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx-0.184 dy+0.061
+    2f   0ms dx+0.000 dy+0.000
+#127 MISS 0.15s fired=["3-finger swipe left"]
+    1f   7ms dx-0.003 dy+0.002
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx-0.153 dy+0.053
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#128 MISS 0.12s fired=["3-finger swipe left"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx-0.110 dy+0.049
+    2f   0ms dx+0.000 dy+0.000
+    1f  24ms dx-0.034 dy-0.004
+#129 MISS 0.14s fired=["3-finger swipe left"]
+    1f   7ms dx-0.006 dy+0.015
+    3f  72ms dx-0.098 dy+0.048
+    2f  40ms dx-0.044 dy+0.002
+#130 MISS 0.14s fired=["3-finger swipe left"]
+    1f  16ms dx-0.020 dy+0.020
+    3f  96ms dx-0.168 dy+0.046
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#131 MISS 0.11s fired=["3-finger swipe right"]
+    1f   7ms dx-0.001 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx+0.112 dy-0.018
+    2f   7ms dx+0.029 dy-0.018
+    1f   0ms dx+0.000 dy+0.000
+#132 MISS 0.10s fired=["3-finger swipe right"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  72ms dx+0.116 dy-0.050
+    2f   0ms dx+0.000 dy+0.000
+#133 MISS 0.07s fired=["3-finger swipe right"]
+    3f  56ms dx+0.107 dy-0.047
+    2f   8ms dx+0.027 dy-0.022
+#134 MISS 0.10s fired=["3-finger swipe right"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   7ms dx+0.000 dy-0.001
+    3f  55ms dx+0.091 dy-0.058
+    2f   8ms dx+0.019 dy-0.016
+#135 MISS 0.09s fired=[]
+    2f   7ms dx+0.004 dy-0.005
+    3f  48ms dx+0.067 dy-0.076
+    2f   0ms dx+0.000 dy+0.000
+    1f   8ms dx+0.014 dy-0.015
+#136 MISS 0.10s fired=[]
+    2f   0ms dx+0.000 dy+0.000
+    3f  64ms dx+0.113 dy-0.100
+    2f   0ms dx+0.000 dy+0.000
+    1f   7ms dx+0.011 dy-0.011
+#137 MISS 0.18s fired=[]
+    1f  16ms dx-0.003 dy+0.005
+    2f   7ms dx-0.001 dy+0.001
+    3f  96ms dx+0.125 dy-0.124
+    2f   0ms dx+0.000 dy+0.000
+    1f  23ms dx+0.026 dy-0.019
+#138 MISS 0.11s fired=[]
+    1f   8ms dx+0.002 dy-0.001
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx+0.095 dy-0.082
+    1f   7ms dx+0.008 dy-0.007
+#139 MISS 0.10s fired=[]
+    1f   0ms dx+0.000 dy+0.000
+    2f   0ms dx+0.000 dy+0.000
+    3f  48ms dx+0.071 dy-0.064
+    2f  23ms dx+0.052 dy-0.055
+    1f   0ms dx+0.000 dy+0.000
+#140 MISS 0.09s fired=[]
+    2f   0ms dx+0.000 dy+0.000
+    3f  71ms dx+0.132 dy-0.143
+    2f   0ms dx+0.000 dy+0.000
+#141 MISS 3.24s fired=["4-finger swipe up"]
+    1f 1032ms dx-0.015 dy+0.006
+    2f  16ms dx+0.001 dy-0.001
+    3f  23ms dx-0.000 dy-0.000
+    4f 119ms dx-0.024 dy+0.113
+    2f   0ms dx+0.000 dy+0.000
+    1f 343ms dx-0.000 dy-0.003
+    2f  15ms dx-0.001 dy-0.000
+    3f   0ms dx+0.000 dy+0.000
+    4f 135ms dx-0.008 dy+0.237
+    3f   0ms dx+0.000 dy+0.000
+    1f 616ms dx-0.000 dy+0.002
+    2f   8ms dx-0.001 dy+0.001
+    3f   0ms dx+0.000 dy+0.000
+    4f 103ms dx-0.027 dy+0.149
+    2f   0ms dx+0.000 dy+0.000
+    1f 311ms dx-0.002 dy+0.001
+    2f  15ms dx-0.000 dy+0.000
+    3f   0ms dx+0.000 dy+0.000
+    4f  88ms dx-0.023 dy+0.116
+    3f   8ms dx-0.002 dy+0.012
+    2f   0ms dx+0.000 dy+0.000
+    1f 231ms dx+0.002 dy-0.004
+#142 MISS 1.58s fired=["4-finger swipe up"]
+    1f 280ms dx+0.000 dy+0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f   0ms dx+0.000 dy+0.000
+    4f  71ms dx-0.014 dy+0.066
+    2f   0ms dx+0.000 dy+0.000
+    1f 328ms dx-0.000 dy-0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f   0ms dx+0.000 dy+0.000
+    4f  64ms dx-0.021 dy+0.100
+    3f  16ms dx-0.013 dy+0.038
+    2f  16ms dx-0.006 dy+0.013
+    1f 536ms dx-0.003 dy-0.003
+    2f   0ms dx+0.000 dy+0.000
+    3f   7ms dx-0.001 dy+0.007
+    4f  79ms dx-0.022 dy+0.150
+    3f   0ms dx+0.000 dy+0.000
+    2f   8ms dx-0.003 dy+0.007
+    1f  32ms dx+0.001 dy-0.000
+#143 MISS 0.70s fired=["4-finger swipe up"]
+    1f 248ms dx+0.039 dy+0.040
+    2f  40ms dx-0.001 dy-0.001
+    4f 176ms dx-0.021 dy+0.082
+    3f  48ms dx-0.052 dy-0.086
+    2f  56ms dx-0.002 dy+0.008
+    1f  96ms dx+0.003 dy-0.006
+#144 MISS 0.77s fired=["4-finger swipe up"]
+    1f   8ms dx-0.002 dy+0.003
+    2f   8ms dx-0.001 dy+0.003
+    4f 152ms dx-0.043 dy+0.201
+    3f   0ms dx+0.000 dy+0.000
+    1f 352ms dx+0.006 dy-0.002
+    2f   8ms dx-0.000 dy+0.001
+    3f   8ms dx+0.000 dy+0.002
+    4f 112ms dx-0.049 dy+0.207
+    3f   0ms dx+0.000 dy+0.000
+    1f  48ms dx+0.003 dy-0.001
+#145 OK   0.21s fired=["3-finger swipe up"]
+    1f   7ms dx+0.001 dy+0.003
+    2f   7ms dx+0.002 dy+0.002
+    3f 119ms dx+0.000 dy+0.124
+    2f  40ms dx-0.012 dy+0.040
+    1f   0ms dx+0.000 dy+0.000
+#146 OK   0.14s fired=["3-finger swipe up"]
+    3f 143ms dx+0.008 dy+0.204
+#147 OK   0.15s fired=["3-finger swipe up"]
+    1f  16ms dx+0.002 dy+0.007
+    2f   7ms dx-0.001 dy+0.005
+    3f  95ms dx+0.005 dy+0.149
+    1f   7ms dx-0.000 dy+0.014
+#148 OK   0.19s fired=["3-finger swipe up"]
+    1f  23ms dx-0.001 dy+0.000
+    2f  16ms dx+0.001 dy+0.006
+    3f 128ms dx-0.002 dy+0.231
+    1f   0ms dx+0.000 dy+0.000
+#149 OK   0.21s fired=["3-finger swipe up"]
+    1f   8ms dx+0.001 dy+0.002
+    2f  16ms dx+0.000 dy+0.002
+    3f 152ms dx-0.011 dy+0.173
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#150 OK   0.16s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f   7ms dx+0.001 dy+0.001
+    3f 135ms dx-0.015 dy+0.166
+#151 OK   0.18s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  16ms dx+0.000 dy+0.003
+    3f 135ms dx+0.002 dy+0.161
+    1f   0ms dx+0.000 dy+0.000
+#152 OK   0.22s fired=["3-finger swipe up"]
+    1f  40ms dx+0.000 dy+0.001
+    3f 176ms dx+0.005 dy+0.190
+#153 OK   0.16s fired=["3-finger swipe up"]
+    1f   8ms dx+0.002 dy+0.005
+    2f   0ms dx+0.000 dy+0.000
+    3f 119ms dx+0.002 dy+0.159
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#154 OK   0.18s fired=["3-finger swipe up"]
+    1f   8ms dx-0.001 dy+0.002
+    2f  40ms dx+0.001 dy+0.006
+    3f 119ms dx+0.011 dy+0.147
+#155 MISS 0.23s fired=["3-finger swipe down"]
+    1f  16ms dx+0.001 dy-0.004
+    3f 160ms dx-0.003 dy-0.156
+    2f  24ms dx-0.001 dy-0.022
+    1f   8ms dx-0.000 dy-0.003
+#156 MISS 0.14s fired=["3-finger swipe down"]
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx-0.009 dy-0.145
+    2f   0ms dx+0.000 dy+0.000
+    1f   0ms dx+0.000 dy+0.000
+#157 MISS 0.18s fired=["3-finger swipe down"]
+    1f  15ms dx+0.002 dy-0.004
+    3f 143ms dx-0.014 dy-0.130
+    1f   0ms dx+0.000 dy+0.000
+#158 OK   0.18s fired=["3-finger swipe up"]
+    1f   0ms dx+0.000 dy+0.000
+    2f  16ms dx+0.002 dy+0.007
+    3f 135ms dx+0.008 dy+0.182
+    1f   0ms dx+0.000 dy+0.000
+#159 OK   0.14s fired=["3-finger swipe up"]
+    1f   7ms dx+0.001 dy+0.001
+    2f   7ms dx-0.000 dy+0.008
+    3f  96ms dx+0.014 dy+0.108
+    1f   0ms dx+0.000 dy+0.000
+#160 OK   0.14s fired=["3-finger swipe up"]
+    2f   8ms dx-0.000 dy+0.005
+    3f 103ms dx+0.014 dy+0.139
+    1f  16ms dx+0.004 dy+0.029
+#161 OK   0.16s fired=["3-finger swipe up"]
+    1f   8ms dx-0.001 dy+0.003
+    3f 135ms dx+0.031 dy+0.342
+    1f   0ms dx+0.000 dy+0.000
+#162 OK   0.14s fired=["3-finger swipe up"]
+    1f   8ms dx+0.003 dy+0.011
+    3f 128ms dx+0.019 dy+0.254
+#163 OK   0.13s fired=["3-finger swipe up"]
+    2f   0ms dx+0.000 dy+0.000
+    3f 112ms dx+0.015 dy+0.195
+    1f   0ms dx+0.000 dy+0.000

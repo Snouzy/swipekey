@@ -3,10 +3,15 @@ import XCTest
 @testable import SwipeKeyCore
 
 final class SwipeRecognizerTests: XCTestCase {
+    /// Each frame 0.25 s after the last: past the finger-count settle, so these tests check
+    /// distances and directions only.
+    private var clock = 0.0
+
     private func frame(_ points: [(Double, Double)], state: Int = 4) -> TouchFrame {
-        TouchFrame(
+        clock += 0.25
+        return TouchFrame(
             touches: points.enumerated().map { Touch(x: $1.0, y: $1.1, identifier: $0, state: state) },
-            timestamp: 0
+            timestamp: clock
         )
     }
 
@@ -68,11 +73,15 @@ final class SwipeRecognizerTests: XCTestCase {
 }
 
 final class PinchRecognizerTests: XCTestCase {
+    /// Each frame 0.25 s after the last, past the finger-count settle.
+    private var clock = 0.0
+
     /// Two fingers `gap` apart horizontally, centred on (cx, 0.5).
     private func two(gap: Double, cx: Double = 0.5) -> TouchFrame {
-        TouchFrame(
+        clock += 0.25
+        return TouchFrame(
             touches: [Touch(x: cx - gap / 2, y: 0.5, identifier: 0), Touch(x: cx + gap / 2, y: 0.5, identifier: 1)],
-            timestamp: 0
+            timestamp: clock
         )
     }
 
@@ -94,7 +103,7 @@ final class PinchRecognizerTests: XCTestCase {
         _ = r.process(two(gap: 0.4))
         XCTAssertEqual(r.process(two(gap: 0.2)).count, 1)
         XCTAssertEqual(r.process(two(gap: 0.05)), [])
-        _ = r.process(TouchFrame(touches: [], timestamp: 0))
+        _ = r.process(TouchFrame(touches: [], timestamp: clock))
         _ = r.process(two(gap: 0.4))
         XCTAssertEqual(r.process(two(gap: 0.2)).count, 1)
     }
@@ -316,6 +325,13 @@ final class FingerCountTests: XCTestCase {
     }
 }
 
+/// For bindings an engine test really fires: the engine runs the action, and a key action would
+/// type into whatever app has focus while the tests run.
+let harmless = ActionSpec.shell("true")
+
+/// Only bound gestures fire: engine tests that watch `onGesture` bind the swipe they do.
+let swipeUpBound = Config(bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: harmless)])
+
 final class PauseTests: XCTestCase {
     private func swipeUp(_ engine: Engine) {
         for dy in [0.0, 0.2] {
@@ -324,7 +340,7 @@ final class PauseTests: XCTestCase {
     }
 
     func testPausedEngineFiresNothingAndBlocksNoScroll() throws {
-        let engine = try Engine(config: Config(bindings: []))
+        let engine = try Engine(config: swipeUpBound)
         let fired = expectation(description: "gesture")
         fired.isInverted = true
         engine.onGesture = { _ in fired.fulfill() }
@@ -335,7 +351,7 @@ final class PauseTests: XCTestCase {
     }
 
     func testResumedEngineFiresAgain() throws {
-        let engine = try Engine(config: Config(bindings: []))
+        let engine = try Engine(config: swipeUpBound)
         let fired = expectation(description: "gesture")
         engine.onGesture = { trigger in
             XCTAssertEqual(trigger.gesture, .swipe(fingers: 3, direction: .up))
@@ -442,7 +458,7 @@ final class CaptureTests: XCTestCase {
     }
 
     func testCaptureGetsTheFramesAndRunsNoAction() throws {
-        let engine = try Engine(config: Config(bindings: []))
+        let engine = try Engine(config: swipeUpBound)
         let fired = expectation(description: "gesture")
         fired.isInverted = true
         engine.onGesture = { _ in fired.fulfill() }
@@ -456,7 +472,7 @@ final class CaptureTests: XCTestCase {
     }
 
     func testGesturesFireAgainOnceCaptureEnds() throws {
-        let engine = try Engine(config: Config(bindings: []))
+        let engine = try Engine(config: swipeUpBound)
         let fired = expectation(description: "gesture")
         engine.onGesture = { _ in fired.fulfill() }
         engine.capture = { _ in }

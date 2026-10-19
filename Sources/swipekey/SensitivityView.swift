@@ -97,6 +97,8 @@ struct SensitivityView: View {
             return ("Fired: \(gesture) → \(actions.isEmpty ? "no binding" : actions.joined(separator: ", "))", .green)
         case let .tooShort(traveled, needed):
             return (String(format: "Too short: traveled %.2f, needs %.2f. Lower the distance or swipe further.", traveled, needed), .orange)
+        case .notQuick:
+            return ("Far enough, but not read as a swipe: too slow, too diagonal, or the fingers didn't land together. A quick, straight flick works best.", .orange)
         case nil:
             return (lab.heading ?? "", .secondary)
         }

@@ -64,30 +64,34 @@ public final class Engine {
         }
     }
 
-    /// Called for every recognized gesture, bound or not (used by `--debug`).
+    /// Called for every bound gesture that fires (used by `--debug` and the menu).
     public var onGesture: ((Trigger) -> Void)?
     public var onActionError: ((Trigger, Error) -> Void)?
+    /// Called on the main queue when a 3+ finger swipe came close but didn't fire.
+    public var onNearMiss: ((NearMiss) -> Void)?
 
     /// `heldModifiers` reads the keyboard modifiers held right now; tests replace it.
     public init(
         config: Config,
         heldModifiers: @escaping () -> CGEventFlags = { CGEventSource.flagsState(.combinedSessionState) }
     ) throws {
-        (actions, makeRecognizers) = try Self.build(config)
+        (actions, makeRecognizers) = try Self.build(config, heldModifiers: heldModifiers)
         self.heldModifiers = heldModifiers
     }
 
     /// Applies new bindings and thresholds right away, without restarting (thread-safe).
     /// Throws, and keeps the current ones, when the config is invalid.
     public func reload(_ config: Config) throws {
-        let (actions, makeRecognizers) = try Self.build(config)
+        let (actions, makeRecognizers) = try Self.build(config, heldModifiers: heldModifiers)
         lock.lock(); defer { lock.unlock() }
         self.actions = actions
         self.makeRecognizers = makeRecognizers
         recognizersByDevice = [:]
     }
 
-    private static func build(_ config: Config) throws -> ([Trigger: [Action]], () -> [GestureRecognizer]) {
+    private static func build(
+        _ config: Config, heldModifiers: @escaping () -> CGEventFlags
+    ) throws -> ([Trigger: [Action]], () -> [GestureRecognizer]) {
         var actions: [Trigger: [Action]] = [:]
         for binding in config.bindings {
             if try KeyCodes.flags(for: binding.holding).contains(.maskSecondaryFn) {
@@ -96,8 +100,14 @@ public final class Engine {
             actions[try binding.trigger(), default: []].append(try binding.action.makeAction())
         }
         let swipeThreshold = config.swipeThreshold, pinchThreshold = config.pinchThreshold
+        // Bound with the modifiers held when the gesture would fire: a binding that needs ⌘ doesn't
+        // count, and doesn't lock the session, while ⌘ is up.
+        let bound = actions
+        let isBound: IsBound = { bound[Trigger(gesture: $0, held: heldModifiers())] != nil }
         // New gesture types plug in here.
-        return (actions, { [SwipeRecognizer(threshold: swipeThreshold), PinchRecognizer(threshold: pinchThreshold)] })
+        return (actions, {
+            [SwipeRecognizer(threshold: swipeThreshold, isBound: isBound), PinchRecognizer(threshold: pinchThreshold, isBound: isBound)]
+        })
     }
 
     /// Thread-safe: MultitouchSupport delivers each device's frames on its own thread.
@@ -118,7 +128,12 @@ public final class Engine {
         recognizersByDevice[device] = recognizers
         fingersByDevice[device] = frame.touches.filter(\.isTouching).count
         let gestures = recognizers.flatMap { $0.process(frame) }
+        let misses = recognizers.compactMap { $0.takeNearMiss() }
         lock.unlock()
+
+        for miss in misses {
+            DispatchQueue.main.async { self.onNearMiss?(miss) }
+        }
 
         for gesture in gestures {
             // Read modifiers when the gesture fires, not when the action runs on the main queue.

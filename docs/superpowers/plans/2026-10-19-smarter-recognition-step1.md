@@ -212,7 +212,23 @@ Each rule is pinned by synthetic unit tests and checked against the fixtures.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Run `swift test` and the fixture report. Expected: all pass. If a recorded real swipe is now lost, lower `agreeFraction` to the largest value that keeps every recorded swipe. Report the value.
 
-### Task 8: Thumbs and palms, and the strict fixture tests
+### Task 7b: Direction from physical lengths (3+ fingers)
+
+Added during execution, from the real session (see the ledger): Mathias's swipes right have a normalized ratio of 0.88–1.16, so they can't be recognized; in mm they're 1.43–1.88.
+
+**Files:** `Sources/CMultitouch/*` (`sk_device_aspect`), `Sources/SwipeKeyCore/Gesture.swift` (`TouchFrame.aspect`), `MultitouchSource.swift`, `Recognizers.swift`. Test: `AspectTests`.
+
+**Interfaces:**
+- `TouchFrame.aspect: Double`, default 1. It is the trackpad's width over its height, from `MTDeviceGetSensorSurfaceDimensions`, and stays 1 when unknown.
+- `SwipeRecognizer` gains `physicalAxisRatio: Double = 1.2`. For 3+ fingers, the direction compares `|dx| × aspect` with `|dy|` against `physicalAxisRatio`. For 2 fingers, it keeps the normalized comparison with `axisRatio` (1.5). Distance thresholds are unchanged.
+
+- [ ] Tests:
+  - `testDiagonalRightSwipeIsHorizontalOnAWideTrackpad`: aspect 1.625, 3 fingers, dx +0.067, dy −0.076 → `.swipe(3,.right)`.
+  - `testSameMoveWithoutAspectFiresNothing`: aspect 1, same move → nothing.
+  - `testTwoFingerKeepsNormalizedRatio`: aspect 1.625, 2 fingers, dx −0.07, dy +0.06 → nothing.
+- [ ] RED, implement, GREEN, run the suite and the fixture report.
+
+### Task 8: Resting finger, and the strict fixture tests
 
 **Files:**
 - Modify: `Sources/SwipeKeyCore/Recognizers.swift` (both recognizers filter `active`)
@@ -220,11 +236,13 @@ Each rule is pinned by synthetic unit tests and checked against the fixtures.
 - Modify: `docs/superpowers/specs/2026-10-19-smarter-recognition-design.md` (record the decision)
 
 **Interfaces:**
-- From `thumb-3-up`, compare the `size`/`majorAxis` of the resting thumb with the fingers.
-  - **If one cutoff separates them in every session:** add `Touch.isLikelyThumbOrPalm` with that cutoff. Both recognizers then ignore such touches, as if lifted. Add the unit test `testRestingThumbIsIgnored` with the cutoff's values.
-  - **Otherwise:** skip the thumb rule, and write in the spec why (the numbers).
+- **Ruling, replacing the size-based rule:** there's no real size data, but the real session shows a resting finger turning 3-finger swipes into 4-finger ones (#141–144).
+  - A finger that was already down ≥ 0.15 s when the others landed, and doesn't move with them, is ignored. It doesn't move with them when its own travel along the axis is below `agreeFraction × needed`.
+  - A session re-arms when fewer than 2 fingers touch.
+  - Tests: `testRestingFingerIsIgnored` (1 finger still for 0.5 s, then 3 land and swipe up → `.swipe(3,.up)`), and `testRestingFingerDoesNotBlockNextSwipe` (same, the 3 lift, 3 land again and swipe up → it fires again).
 - Strict fixture tests replace the report-only assertions (keep the report):
-  - `testBoundSwipesFireTheirGesture`: in every fixture with `expect`, every counted session fires exactly `[expect]`. Exception: if a session fails, the test lists it by index and finger timing. Mathias decides on it at the review, and an accepted miss goes in an explicit `knownMisses` list with a reason.
+  - `testRealSessionSwipesFire`: on `probe-session.log` (163 real sessions, replayed as synthetic frames, intent by index range as in the ledger), every session fires its intended 3-finger gesture (once per resting-finger swipe). Accepted exceptions go in `knownMisses`, with a reason.
+  - `testBoundSwipesFireTheirGesture` (only if recorded traces exist): in every fixture with `expect`, every counted session fires exactly `[expect]`. Exception: if a session fails, the test lists it by index and finger timing. Mathias decides on it at the review, and an accepted miss goes in an explicit `knownMisses` list with a reason.
   - `testScrollFixtureFiresNoMoreThanBaseline`: on `scroll-2` with `mathiasBindings`, the number of fired gestures ≤ the baseline's, and 0 of them have 3+ fingers.
 
 - [ ] **Step 1:** Write the strict tests. Run them and record what fails.

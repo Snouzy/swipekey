@@ -16,8 +16,9 @@ typedef struct {
     float minorAxis;
 } SKTouch;
 
-/// Called on a MultitouchSupport thread for every frame of every device.
-typedef void (*SKFrameHandler)(uintptr_t device, const SKTouch *touches, int32_t count, double timestamp);
+/// Called on a MultitouchSupport thread for every frame of every device. `aspect` is the
+/// device's width over its height (1 when unknown).
+typedef void (*SKFrameHandler)(uintptr_t device, const SKTouch *touches, int32_t count, double timestamp, double aspect);
 
 /// Loads MultitouchSupport and starts every multitouch device.
 /// Returns the number of devices started, or -1 when the framework or its symbols are unavailable.

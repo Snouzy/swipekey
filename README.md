@@ -29,6 +29,18 @@ trackpad ─frames─▶ recognizers ─gesture─▶ engine ─▶ actions
 
 swipekey reads raw touches from Apple's `MultitouchSupport` framework, the same source the system gestures use. A recognizer turns them into gestures (for now, swipes with any number of fingers), and the engine runs the actions you bound to them: a keystroke with modifiers, or a shell command. It needs Accessibility permission to post keystrokes, and nothing else: no network, no telemetry.
 
+Real hands are messy, so recognition allows for how swipes actually happen. The rules were tuned on 169 real swipes, and recognize 168 of them (148 before):
+
+- **Fingers land one after another.** A 3-finger swipe that starts on 2 fingers never fires the 2-finger binding.
+- **A 2-finger swipe isn't a scroll.** Both are the same movement, so a 2-finger swipe fires when the fingers lift, and only if it was quick and short with both fingers landing together. Scrolling a page sideways, slower and with one finger down first, fires nothing.
+- **Only gestures you bound count.** A gesture with no binding never blocks the one you meant.
+- **Fingers lift early.** With 3+ fingers, a finger leaving before the others doesn't erase the movement.
+- **Quick flicks count.** A fast 3+ finger swipe fires at half the distance.
+- **Hands drift.** The direction is judged in real millimetres: a 3-finger swipe right that heads down a little is still a swipe right (2-finger swipes must be straighter, so a diagonal scroll stays a scroll).
+- **A resting thumb is ignored.** A finger left still on the pad doesn't turn a 3-finger swipe into a 4-finger one.
+
+Each finger must also move the swipe's way, so a pinch or a turn isn't read as a swipe. A 3+ finger swipe that came close but didn't fire writes a line to the log, e.g. `near miss: 3-finger swipe up: 0.042 of 0.050 (too short)`.
+
 ## Run it
 
 ```sh
@@ -52,7 +64,7 @@ Swipekey puts a small trackpad icon in the menu bar. From it you can pause and r
 | `make test` | Unit tests, no trackpad needed |
 | `make uninstall` | Remove the app and the LaunchAgent, keep the config |
 
-`swipekey --debug` prints every gesture it recognizes.
+`swipekey --debug` prints every gesture that fires. `swipekey --record <dir>` guides you through a few gestures and saves their raw touches as traces for the tests (pause swipekey first).
 
 ## Settings window
 

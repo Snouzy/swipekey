@@ -45,15 +45,16 @@ public struct Trace: Equatable {
     }
 }
 
-/// Compact on disk: each frame is `[timestamp, [[id, state, x, y, size, majorAxis, minorAxis], …]]`,
+/// Compact on disk: the trackpad's aspect once, then each frame is `[timestamp, [[id, state, x, y, size, majorAxis, minorAxis], …]]`,
 /// numbers rounded to 4 decimals, so a minute of scrolling stays small.
 extension Trace: Codable {
-    private enum CodingKeys: String, CodingKey { case name, expect, frames }
+    private enum CodingKeys: String, CodingKey { case name, expect, aspect, frames }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decode(String.self, forKey: .name)
         expect = try c.decodeIfPresent(Gesture.self, forKey: .expect)
+        let aspect = try c.decodeIfPresent(Double.self, forKey: .aspect) ?? 1
         var framesContainer = try c.nestedUnkeyedContainer(forKey: .frames)
         var frames: [TouchFrame] = []
         while !framesContainer.isAtEnd {
@@ -66,7 +67,7 @@ extension Trace: Codable {
                 }
                 return Touch(x: row[2], y: row[3], identifier: Int(row[0]), state: Int(row[1]), size: row[4], majorAxis: row[5], minorAxis: row[6])
             }
-            frames.append(TouchFrame(touches: touches, timestamp: timestamp))
+            frames.append(TouchFrame(touches: touches, timestamp: timestamp, aspect: aspect))
         }
         self.frames = frames
     }
@@ -75,6 +76,8 @@ extension Trace: Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(name, forKey: .name)
         try c.encodeIfPresent(expect, forKey: .expect)
+        // One trackpad per trace: its aspect is stored once.
+        try c.encode(frames.first?.aspect ?? 1, forKey: .aspect)
         var framesContainer = c.nestedUnkeyedContainer(forKey: .frames)
         for frame in frames {
             var row = framesContainer.nestedUnkeyedContainer()

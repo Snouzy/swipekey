@@ -16,6 +16,8 @@ final class TouchLab: ObservableObject {
     enum Outcome: Equatable {
         case fired(SwipeKeyCore.Gesture)
         case tooShort(traveled: Double, needed: Double)
+        /// Far enough but not a swipe: slow or long (a scroll), diagonal, or fingers apart.
+        case notQuick
     }
 
     @Published private(set) var fingers: [Finger] = []
@@ -76,10 +78,19 @@ final class TouchLab: ObservableObject {
         let active = frame.touches.filter(\.isTouching)
         fingers = active.map { Finger(id: $0.identifier, x: $0.x, y: 1 - $0.y) }
 
+        // 2-finger swipes fire on the frame where the fingers lift, often with none left touching.
+        if !fired, let gesture = gestures.first {
+            fired = true
+            progress = 1
+            heading = nil
+            outcome = .fired(gesture)
+            onGesture?(gesture)
+        }
+
         guard !active.isEmpty else {
-            // Lifted: a real attempt that didn't get there says by how much.
+            // Lifted: a real attempt that didn't get there says why.
             if !fired, longestSwipe > swipe.threshold * 0.25 {
-                outcome = .tooShort(traveled: longestSwipe, needed: swipe.threshold)
+                outcome = longestSwipe >= swipe.threshold ? .notQuick : .tooShort(traveled: longestSwipe, needed: swipe.threshold)
             }
             fired = false
             longestSwipe = 0
@@ -102,14 +113,6 @@ final class TouchLab: ObservableObject {
                 heading = "Swiping " + (abs(dy) >= abs(dx) ? (dy > 0 ? "up" : "down") : (dx > 0 ? "right" : "left")) + "…"
             }
             if outcome != nil, progress > 0.1 { outcome = nil }
-        }
-
-        if let gesture = gestures.first {
-            fired = true
-            progress = 1
-            heading = nil
-            outcome = .fired(gesture)
-            onGesture?(gesture)
         }
     }
 }
