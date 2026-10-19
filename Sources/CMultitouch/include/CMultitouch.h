@@ -10,6 +10,10 @@ typedef struct {
     int32_t identifier;
     /// Raw MultitouchSupport state: 3 = make touch, 4 = touching, 5 = break touch, ...
     int32_t state;
+    /// Contact size and ellipse axes, as MultitouchSupport reports them (used to spot thumbs and palms).
+    float size;
+    float majorAxis;
+    float minorAxis;
 } SKTouch;
 
 /// Called on a MultitouchSupport thread for every frame of every device.

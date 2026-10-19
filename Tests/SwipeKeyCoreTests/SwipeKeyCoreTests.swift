@@ -1272,3 +1272,43 @@ final class BindingFileWorkflowTests: XCTestCase {
         try assertSavedAndLive([last])
     }
 }
+
+final class TouchShapeTests: XCTestCase {
+    func testTouchKeepsContactShapeAndDefaultsToZero() {
+        let shaped = Touch(x: 0.1, y: 0.2, identifier: 1, state: 4, size: 0.5, majorAxis: 9, minorAxis: 7)
+        XCTAssertEqual(shaped.size, 0.5)
+        XCTAssertEqual(shaped.majorAxis, 9)
+        XCTAssertEqual(shaped.minorAxis, 7)
+        let plain = Touch(x: 0.1, y: 0.2, identifier: 1)
+        XCTAssertEqual(plain.size, 0)
+        XCTAssertEqual(plain.majorAxis, 0)
+        XCTAssertEqual(plain.minorAxis, 0)
+    }
+}
+
+final class TraceTests: XCTestCase {
+    private func frame(_ t: Double, _ ys: [Double]) -> TouchFrame {
+        TouchFrame(touches: ys.enumerated().map { Touch(x: 0.3 + Double($0) * 0.1, y: $1, identifier: $0, state: 4, size: 0.42, majorAxis: 8.5, minorAxis: 7.25) }, timestamp: t)
+    }
+
+    func testTraceRoundTripsThroughFile() throws {
+        let trace = Trace(name: "swipe-3-up", expect: .swipe(fingers: 3, direction: .up), frames: [
+            frame(10.0, [0.3, 0.3, 0.3]), frame(10.0083, [0.35, 0.35, 0.35]), frame(10.0166, []),
+            frame(11.0, [0.2, 0.2]), frame(11.0083, []),
+        ])
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("trace-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try trace.write(to: url)
+        XCTAssertEqual(try Trace.load(from: url), trace)
+    }
+
+    func testTraceSplitsSessionsAtLift() {
+        let trace = Trace(name: "t", expect: nil, frames: [
+            frame(0, []), frame(1, [0.3]), frame(2, [0.3, 0.3]), frame(3, [0.4, 0.4]), frame(4, []),
+            frame(5, [0.5]), frame(6, [0.5]), frame(7, []),
+        ])
+        XCTAssertEqual(trace.sessions.count, 2)
+        XCTAssertEqual(trace.sessions[0].count, 4)
+        XCTAssertEqual(trace.sessions[1].count, 3)
+    }
+}

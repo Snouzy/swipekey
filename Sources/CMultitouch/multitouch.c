@@ -52,6 +52,9 @@ static int contactCallback(MTDeviceRef device, MTTouch *data, int count, double 
             .y = data[i].normalized.position.y,
             .identifier = data[i].identifier,
             .state = data[i].state,
+            .size = data[i].size,
+            .majorAxis = data[i].majorAxis,
+            .minorAxis = data[i].minorAxis,
         };
     }
     frameHandler((uintptr_t)device, touches, n, timestamp);

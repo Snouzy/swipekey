@@ -13,6 +13,6 @@ let package = Package(
         // Gestures, recognizers, actions and config: everything testable without a trackpad.
         .target(name: "SwipeKeyCore", dependencies: ["CMultitouch"]),
         .executableTarget(name: "swipekey", dependencies: ["SwipeKeyCore"]),
-        .testTarget(name: "SwipeKeyCoreTests", dependencies: ["SwipeKeyCore"]),
+        .testTarget(name: "SwipeKeyCoreTests", dependencies: ["SwipeKeyCore"], resources: [.copy("Fixtures")]),
     ]
 )

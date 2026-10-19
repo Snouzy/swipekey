@@ -3,11 +3,12 @@ import Foundation
 import SwipeKeyCore
 
 let usage = """
-usage: swipekey [--config <path>] [--debug] [--print-default-config]
+usage: swipekey [--config <path>] [--debug] [--print-default-config] [--record <dir>]
 
   --config <path>          Config file (default: ~/.config/swipekey/config.json)
   --debug                  Log every recognized gesture
   --print-default-config   Print the built-in config as JSON and exit
+  --record <dir>           Record a few guided gestures as traces for the tests, and exit
 """
 
 func fail(_ message: String) -> Never {
@@ -36,6 +37,9 @@ while let arg = args.popFirst() {
     case "--print-default-config":
         print(try Config.default.jsonString())
         exit(0)
+    case "--record":
+        guard let path = args.popFirst() else { fail("--record needs a directory") }
+        Recorder.run(into: URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
     case "-h", "--help":
         print(usage)
         exit(0)

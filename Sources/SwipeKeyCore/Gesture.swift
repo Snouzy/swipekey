@@ -5,19 +5,26 @@ public struct Touch: Equatable {
     public var identifier: Int
     /// Raw MultitouchSupport state (3 = make touch, 4 = touching, 5 = break touch, ...).
     public var state: Int
+    /// Contact size and ellipse axes, raw from MultitouchSupport (0 when unknown).
+    public var size: Double
+    public var majorAxis: Double
+    public var minorAxis: Double
 
-    public init(x: Double, y: Double, identifier: Int, state: Int = 4) {
+    public init(x: Double, y: Double, identifier: Int, state: Int = 4, size: Double = 0, majorAxis: Double = 0, minorAxis: Double = 0) {
         self.x = x
         self.y = y
         self.identifier = identifier
         self.state = state
+        self.size = size
+        self.majorAxis = majorAxis
+        self.minorAxis = minorAxis
     }
 
     /// True while the finger is actually pressed on the surface (not hovering or lifting).
     public var isTouching: Bool { state == 3 || state == 4 }
 }
 
-public struct TouchFrame {
+public struct TouchFrame: Equatable {
     public var touches: [Touch]
     public var timestamp: Double
 
