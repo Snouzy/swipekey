@@ -65,17 +65,11 @@ Everything in the config can be changed here without touching the JSON, and ever
 
 **Add or edit a binding** in three steps: do the gesture on your trackpad (or pick it by hand), press the shortcut you want, review. System shortcuts like ⌘Space are recorded instead of opening Spotlight, and a gesture already in use, or taken by macOS, is flagged before you save.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-editor-dark.png">
-  <img src=".github/assets/settings-editor-light.png" width="640" alt="Editing a binding: the shortcut ⌘ Space drawn as large keys, with modifier buttons below">
-</picture>
+<img src=".github/assets/settings-add-binding.gif" width="640" alt="Adding a binding: a three-finger swipe down on the trackpad is recognized, then Command Space is picked and the binding saved">
 
 **Tune the sensitivity** with your real fingers: they show up live in the test area, a bar fills toward the threshold, and it tells you whether the swipe fired or how much it fell short. Nothing runs while you test.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-sensitivity-dark.png">
-  <img src=".github/assets/settings-sensitivity-light.png" width="640" alt="The Sensitivity tab: swipe and pinch sliders, and a test area showing three fingers and the message Fired: 3-finger swipe up → Return">
-</picture>
+<img src=".github/assets/settings-sensitivity.gif" width="640" alt="The Sensitivity test area: three fingers move, the bar fills and the message Fired: 3-finger swipe up → Return appears">
 
 ## Configure
 
