@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import SwiftUI
 import SwipeKeyCore
@@ -154,21 +155,61 @@ private struct CaptureTouches: ViewModifier {
     let lab: TouchLab
     let swipe: Double
     let pinch: Double
-    @Environment(\.controlActiveState) private var activeState
     @State private var visible = false
+    @State private var windowIsKey = false
     @State private var capturing = false
 
+    // The window's real key state, not \.controlActiveState: inside a sheet that one reports the
+    // parent window, which is inactive while the sheet is up, so recording never started there.
     func body(content: Content) -> some View {
         content
+            .background(KeyWindowObserver { windowIsKey = $0; update() })
             .onAppear { visible = true; update() }
             .onDisappear { visible = false; update() }
-            .onChange(of: activeState) { _ in update() }
     }
 
     private func update() {
-        let should = visible && activeState == .key
+        let should = visible && windowIsKey
         if should, !capturing { lab.start(swipe: swipe, pinch: pinch) }
         if !should, capturing { lab.stop() }
         capturing = should
+    }
+}
+
+/// Reports whether the window holding this view is the key window, and every change of it.
+private struct KeyWindowObserver: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ObserverView {
+        let view = ObserverView()
+        view.onChange = onChange
+        return view
+    }
+
+    func updateNSView(_ view: ObserverView, context: Context) { view.onChange = onChange }
+
+    final class ObserverView: NSView {
+        var onChange: ((Bool) -> Void)?
+        private var observers: [NSObjectProtocol] = []
+
+        override func viewDidMoveToWindow() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            guard let window else {
+                report(false)
+                return
+            }
+            for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] note in
+                    self?.report(note.name == NSWindow.didBecomeKeyNotification)
+                })
+            }
+            report(window.isKeyWindow)
+        }
+
+        private func report(_ isKey: Bool) {
+            // Out of the view update in progress: SwiftUI state can't change during one.
+            DispatchQueue.main.async { [weak self] in self?.onChange?(isKey) }
+        }
     }
 }
