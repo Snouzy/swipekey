@@ -195,6 +195,20 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(rights, 11)
     }
 
+    /// Teach accepts Mathias's real swipes as examples, resting thumb included: it judges them
+    /// with the recognizer itself.
+    func testTeachAcceptsTheRealSwipes() throws {
+        var refused: [String] = []
+        for session in try RealSessions.load() where Self.knownMisses[session.number] == nil && session.expectedCount == 1 {
+            var teach = TeachSession(gesture: session.intent)
+            var feedback: TeachSession.Feedback?
+            for frame in session.frames { feedback = teach.observe(frame) ?? feedback }
+            if case .accepted = feedback { continue }
+            refused.append("#\(session.number): \(String(describing: feedback))")
+        }
+        XCTAssertEqual(refused, [])
+    }
+
     /// Prints how each intent does with the current recognizers. Asserts nothing.
     func testFixtureReport() throws {
         let sessions = try RealSessions.load()

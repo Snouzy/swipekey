@@ -99,3 +99,11 @@ extension Gesture: Codable {
         }
     }
 }
+
+extension Gesture {
+    public var fingers: Int {
+        switch self {
+        case let .swipe(fingers, _), let .pinch(fingers, _): return fingers
+        }
+    }
+}

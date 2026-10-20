@@ -12,6 +12,7 @@ struct BindingEditor: View {
     /// The furthest step reached: the step bar lets you jump back and forth up to it.
     @State private var reached: Int
     @State private var pickByHand = false
+    @State private var teaching = false
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
 
@@ -263,6 +264,7 @@ struct BindingEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             if let binding = draft.binding {
                 BindingCard(binding: binding)
+                sensitivity(for: binding)
                 ForEach(Array(notes(for: binding).enumerated()), id: \.offset) { _, note in
                     HStack(alignment: .top, spacing: 10) {
                         Text(note.tag).bold()
@@ -274,6 +276,32 @@ struct BindingEditor: View {
                     .background(note.color.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
                 }
             }
+        }
+    }
+
+    /// How far this gesture must go, and Teach to set it from examples.
+    private func sensitivity(for binding: KeyBinding) -> some View {
+        let global: Double
+        if case .pinch = binding.gesture { global = store.config.pinchThreshold } else { global = store.config.swipeThreshold }
+        return HStack(spacing: 10) {
+            Image(systemName: "hand.point.up.left").foregroundStyle(Theme.accent)
+            if let taught = binding.threshold {
+                Text("Taught: fires after \(TeachView.percent(Teach.effective(taught, for: binding.gesture, global: global))) of the trackpad")
+            } else {
+                Text("Fires after \(TeachView.percent(global)) of the trackpad (default)")
+            }
+            Spacer()
+            if binding.threshold != nil {
+                Button("Reset") { draft.teach(nil) }
+            }
+            Button(binding.threshold == nil ? "Teach…" : "Teach again…") { teaching = true }
+        }
+        .font(.callout)
+        .padding(10)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.cardBorder))
+        .sheet(isPresented: $teaching) {
+            TeachView(store: store, gesture: binding.gesture) { draft.teach($0) }
         }
     }
 

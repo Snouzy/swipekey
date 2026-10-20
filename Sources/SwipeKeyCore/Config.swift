@@ -6,20 +6,24 @@ public struct Binding: Codable, Equatable {
     /// Empty means the gesture only fires with no modifier held.
     public var holding: [String]
     public var action: ActionSpec
+    /// This gesture's own distance, taught from examples (Teach). Nil: the global threshold.
+    public var threshold: Double?
 
-    public init(gesture: Gesture, holding: [String] = [], action: ActionSpec) {
+    public init(gesture: Gesture, holding: [String] = [], action: ActionSpec, threshold: Double? = nil) {
         self.gesture = gesture
         self.holding = holding
         self.action = action
+        self.threshold = threshold
     }
 
-    private enum CodingKeys: String, CodingKey { case gesture, holding, action }
+    private enum CodingKeys: String, CodingKey { case gesture, holding, action, threshold }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         gesture = try c.decode(Gesture.self, forKey: .gesture)
         holding = try c.decodeIfPresent([String].self, forKey: .holding) ?? []
         action = try c.decode(ActionSpec.self, forKey: .action)
+        threshold = try c.decodeIfPresent(Double.self, forKey: .threshold)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -27,6 +31,7 @@ public struct Binding: Codable, Equatable {
         try c.encode(gesture, forKey: .gesture)
         if !holding.isEmpty { try c.encode(holding, forKey: .holding) }
         try c.encode(action, forKey: .action)
+        try c.encodeIfPresent(threshold, forKey: .threshold)
     }
 
     /// The gesture plus held modifiers this binding answers to.
