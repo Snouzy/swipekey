@@ -81,7 +81,7 @@ final class BoundGestureTests: XCTestCase {
             swipeThreshold: 0.1,
             bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: harmless)]
         )
-        let engine = try Engine(config: config)
+        let engine = try Engine(config: config, heldModifiers: { [] })
         let fired = expectation(description: "nothing fires")
         fired.isInverted = true
         engine.onGesture = { _ in fired.fulfill() }
@@ -363,7 +363,7 @@ final class NearMissTests: XCTestCase {
 
 final class EngineNearMissTests: XCTestCase {
     func testEngineReportsNearMisses() throws {
-        let engine = try Engine(config: Config(swipeThreshold: 0.1, bindings: swipeUpBound.bindings))
+        let engine = try Engine(config: Config(swipeThreshold: 0.1, bindings: swipeUpBound.bindings), heldModifiers: { [] })
         let reported = expectation(description: "near miss")
         engine.onNearMiss = { miss in
             XCTAssertEqual(miss.reason, .tooShort)

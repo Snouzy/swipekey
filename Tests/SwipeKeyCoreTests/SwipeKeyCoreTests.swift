@@ -329,7 +329,9 @@ final class FingerCountTests: XCTestCase {
 /// type into whatever app has focus while the tests run.
 let harmless = ActionSpec.shell("true")
 
-/// Only bound gestures fire: engine tests that watch `onGesture` bind the swipe they do.
+/// Only bound gestures fire: engine tests that watch `onGesture` bind the swipe they do, and pass
+/// `heldModifiers: { [] }`: by default the engine reads the real keyboard, so a modifier held (or
+/// posted) while the tests run would make the bound swipe unbound.
 let swipeUpBound = Config(bindings: [Binding(gesture: .swipe(fingers: 3, direction: .up), action: harmless)])
 
 final class PauseTests: XCTestCase {
@@ -340,7 +342,7 @@ final class PauseTests: XCTestCase {
     }
 
     func testPausedEngineFiresNothingAndBlocksNoScroll() throws {
-        let engine = try Engine(config: swipeUpBound)
+        let engine = try Engine(config: swipeUpBound, heldModifiers: { [] })
         let fired = expectation(description: "gesture")
         fired.isInverted = true
         engine.onGesture = { _ in fired.fulfill() }
@@ -351,7 +353,7 @@ final class PauseTests: XCTestCase {
     }
 
     func testResumedEngineFiresAgain() throws {
-        let engine = try Engine(config: swipeUpBound)
+        let engine = try Engine(config: swipeUpBound, heldModifiers: { [] })
         let fired = expectation(description: "gesture")
         engine.onGesture = { trigger in
             XCTAssertEqual(trigger.gesture, .swipe(fingers: 3, direction: .up))
@@ -458,7 +460,7 @@ final class CaptureTests: XCTestCase {
     }
 
     func testCaptureGetsTheFramesAndRunsNoAction() throws {
-        let engine = try Engine(config: swipeUpBound)
+        let engine = try Engine(config: swipeUpBound, heldModifiers: { [] })
         let fired = expectation(description: "gesture")
         fired.isInverted = true
         engine.onGesture = { _ in fired.fulfill() }
@@ -472,7 +474,7 @@ final class CaptureTests: XCTestCase {
     }
 
     func testGesturesFireAgainOnceCaptureEnds() throws {
-        let engine = try Engine(config: swipeUpBound)
+        let engine = try Engine(config: swipeUpBound, heldModifiers: { [] })
         let fired = expectation(description: "gesture")
         engine.onGesture = { _ in fired.fulfill() }
         engine.capture = { _ in }

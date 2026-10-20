@@ -43,6 +43,8 @@ extension GestureRecognizer {
 public final class SwipeRecognizer: GestureRecognizer {
     /// Distance the fingers must travel together, in normalized trackpad units (0...1).
     public var threshold: Double
+    /// Gestures with their own distance (taught), instead of `threshold`.
+    public var thresholds: [Gesture: Double] = [:]
     /// For 2-finger swipes, the dominant axis must be this many times longer than the other one,
     /// on real lengths (x scaled by the trackpad's aspect). Stricter than for 3+ fingers: a
     /// diagonal 2-finger movement is a scroll.
@@ -179,9 +181,10 @@ public final class SwipeRecognizer: GestureRecognizer {
         let vertical = abs(dy) >= width
         let straight = vertical ? abs(dy) >= width * ratio : width >= abs(dy) * ratio
         let along = vertical ? abs(dy) : abs(dx)
-        let needed = fingerCount >= 3 && speed(vertical: vertical) >= flickSpeed ? threshold * flickFraction : threshold
         let direction: Direction = vertical ? (dy > 0 ? .up : .down) : (dx > 0 ? .right : .left)
         let gesture = Gesture.swipe(fingers: fingerCount, direction: direction)
+        let distance = thresholds[gesture] ?? threshold
+        let needed = fingerCount >= 3 && speed(vertical: vertical) >= flickSpeed ? distance * flickFraction : distance
         let sign: Double = (vertical ? dy : dx) > 0 ? 1 : -1
         let agree = active.allSatisfy { touch in
             guard let start = starts[touch.identifier] else { return false }
@@ -279,6 +282,8 @@ public final class SwipeRecognizer: GestureRecognizer {
 public final class PinchRecognizer: GestureRecognizer {
     /// Change in the fingers' mean distance to their centroid, in normalized trackpad units (0...1).
     public var threshold: Double
+    /// Gestures with their own spread change (taught), instead of `threshold`.
+    public var thresholds: [Gesture: Double] = [:]
     /// The spread change must be this many times larger than the centroid's travel, so a swipe
     /// whose fingers drift together doesn't count as a pinch.
     public var dominance: Double
@@ -329,9 +334,9 @@ public final class PinchRecognizer: GestureRecognizer {
         guard !firedThisSession, fingerCount >= 2, fingerCount >= (unboundAt ?? 0) else { return [] }
 
         let travel = hypot(cx - origin.x, cy - origin.y)
-        guard abs(change) >= threshold, abs(change) >= travel * dominance else { return [] }
-
         let gesture = Gesture.pinch(fingers: fingerCount, direction: change < 0 ? .in : .out)
+        guard abs(change) >= thresholds[gesture] ?? threshold, abs(change) >= travel * dominance else { return [] }
+
         guard isBound(gesture) else {
             unboundAt = fingerCount
             return []

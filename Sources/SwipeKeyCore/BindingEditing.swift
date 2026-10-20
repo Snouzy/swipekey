@@ -14,6 +14,8 @@ public struct BindingDraft: Equatable {
     public var modifiers: Set<String> = []
     public var command = ""
     public var holding: Set<String> = []
+    /// Taught with Teach; nil for the global threshold.
+    public var threshold: Double?
 
     public init() {}
 
@@ -28,6 +30,7 @@ public struct BindingDraft: Equatable {
             self.command = command
         }
         holding = Set(binding.holding.map(KeyCodes.canonicalModifier))
+        threshold = binding.threshold
     }
 
     /// Takes a gesture done on the trackpad (or picked by hand).
@@ -69,7 +72,7 @@ public struct BindingDraft: Equatable {
     /// The finished binding, or nil while a part is missing or invalid.
     public var binding: Binding? {
         guard let gesture, let action, actionError == nil else { return nil }
-        return Binding(gesture: gesture, holding: KeyCodes.orderedModifiers(holding), action: action)
+        return Binding(gesture: gesture, holding: KeyCodes.orderedModifiers(holding), action: action, threshold: threshold)
     }
 }
 
