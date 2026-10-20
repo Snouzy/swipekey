@@ -1,0 +1,64 @@
+<style>
+  .win { background:#F5F5F7; border:1px solid #d6d6dc; border-radius:12px; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#1d1d1f; }
+  .bar { background:#ECECF0; padding:10px 0 8px; text-align:center; border-bottom:1px solid #d6d6dc; }
+  .bar .t { font-size:12px; font-weight:600; color:#555; margin-bottom:6px; }
+  .tabs { display:flex; gap:4px; justify-content:center; }
+  .tab { font-size:11px; color:#888; padding:4px 10px; border-radius:7px; }
+  .tab .i { font-size:15px; display:block; }
+  .tab.on { color:#2346D8; background:rgba(35,70,216,.14); }
+  .body { padding:16px 20px; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; }
+  .head h4 { margin:0; font-size:18px; }
+  .head .sub { color:#777; font-size:11px; margin-top:2px; }
+  .add { background:#2346D8; color:#fff; font-size:11px; border-radius:6px; padding:4px 10px; white-space:nowrap; }
+  .card { background:#fff; border:1px solid #E2E2E7; border-radius:10px; padding:10px 12px; margin-top:10px; display:flex; align-items:center; gap:10px; }
+  .k { display:inline-block; border:1px solid #C9C9D0; border-bottom-width:2px; border-radius:6px; padding:2px 8px; font-size:12px; background:#fff; min-width:14px; text-align:center; }
+  .keys { display:flex; gap:4px; align-items:center; min-width:120px; }
+  .name { flex:1; font-size:12px; }
+  .name small { display:block; color:#888; font-size:10px; }
+  .arrow { color:#888; }
+  .tools { color:#999; font-size:12px; letter-spacing:6px; }
+  .badge { font-size:9px; color:#2346D8; background:rgba(35,70,216,.1); border-radius:4px; padding:1px 5px; margin-left:4px; }
+  .sect { font-size:13px; font-weight:600; margin-top:16px; color:#444; }
+  .dim { opacity:.45; }
+</style>
+
+<h2>Where should key remaps live?</h2>
+<p class="subtitle">Same card style as the gestures: what you press on the left, what it becomes on the right, edit and delete on each card. Click the one you prefer.</p>
+
+<div class="cards">
+  <div class="card" data-choice="tab" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="win">
+        <div class="bar"><div class="t">Swipekey Settings</div>
+          <div class="tabs"><span class="tab"><span class="i">✋</span>Bindings</span><span class="tab on"><span class="i">⌨︎</span>Keys</span><span class="tab"><span class="i">☰</span>Sensitivity</span><span class="tab"><span class="i">⚙︎</span>General</span></div>
+        </div>
+        <div class="body">
+          <div class="head"><div><h4>Keys</h4><div class="sub">2 remaps — a key you press becomes another one.</div></div><span class="add">＋ Add remap</span></div>
+          <div class="card"><div class="keys"><span class="k">@</span><span class="k">@</span></div><div class="name">Press @ twice<span class="badge">double tap</span><small>a single @ still types @</small></div><span class="arrow">→</span><div class="keys"><span class="k">Return</span></div><span class="tools">✎ 🗑</span></div>
+          <div class="card"><div class="keys"><span class="k">Space</span></div><div class="name">Space<small>only when Logi Options+ sends it</small></div><span class="arrow">→</span><div class="keys"><span class="k">⌃</span><span class="k">⌥</span><span class="k">Space</span></div><span class="tools">✎ 🗑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A — its own "Keys" tab</h3><p>Gestures and keys stay apart; each list stays short.</p></div>
+  </div>
+
+  <div class="card" data-choice="section" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="win">
+        <div class="bar"><div class="t">Swipekey Settings</div>
+          <div class="tabs"><span class="tab on"><span class="i">✋</span>Bindings</span><span class="tab"><span class="i">☰</span>Sensitivity</span><span class="tab"><span class="i">⚙︎</span>General</span></div>
+        </div>
+        <div class="body">
+          <div class="head"><div><h4>Bindings</h4><div class="sub">7 gestures, 2 keys.</div></div><span class="add">＋ Add…</span></div>
+          <div class="card dim"><div class="keys">●●●</div><div class="name">3-finger swipe up</div><span class="arrow">→</span><div class="keys"><span class="k">Return</span></div><span class="tools">✎ 🗑</span></div>
+          <div class="card dim"><div class="keys">●●●</div><div class="name">3-finger swipe left</div><span class="arrow">→</span><div class="keys"><span class="k">⌃</span><span class="k">⇧</span><span class="k">Tab</span></div><span class="tools">✎ 🗑</span></div>
+          <div class="sect">Keys</div>
+          <div class="card"><div class="keys"><span class="k">@</span><span class="k">@</span></div><div class="name">Press @ twice<span class="badge">double tap</span></div><span class="arrow">→</span><div class="keys"><span class="k">Return</span></div><span class="tools">✎ 🗑</span></div>
+          <div class="card"><div class="keys"><span class="k">Space</span></div><div class="name">Space<small>only from Logi Options+</small></div><span class="arrow">→</span><div class="keys"><span class="k">⌃</span><span class="k">⌥</span><span class="k">Space</span></div><span class="tools">✎ 🗑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B — a "Keys" section under the gestures</h3><p>Everything in one list; it gets long with your 7 gestures.</p></div>
+  </div>
+</div>

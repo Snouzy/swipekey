@@ -23,6 +23,9 @@ final class ConfigStore: ObservableObject {
     lazy var lab = TouchLab(engine: engine)
     /// Called after `menuBarIcon` changes.
     var onMenuBarIconChange: ((Bool) -> Void)?
+    /// Puts remaps into effect in the running app (set by main). Throws when it can't, e.g. no
+    /// Accessibility permission for the first remap.
+    var applyRemaps: (([KeyRemap]) throws -> Void)?
 
     init(config: Config, url: URL, engine: Engine) {
         self.config = config
@@ -47,8 +50,24 @@ final class ConfigStore: ObservableObject {
         let fresh = try Config.load(from: url)
         // Unchanged (the usual case on every focus): no reload, no redraw.
         guard fresh != config else { return }
+        try adopt(fresh)
+    }
+
+    /// Runs a config read from the file: bindings and remaps checked first, then applied. The
+    /// window follows the file even when the remaps can't run (no Accessibility permission): that
+    /// error is thrown once, and doesn't block later saves.
+    private func adopt(_ fresh: Config) throws {
+        let remapsChanged = fresh.remaps != config.remaps
+        if remapsChanged { try Self.check(fresh.remaps) }
         try engine.reload(fresh)
         config = fresh
+        if remapsChanged { try applyRemaps?(fresh.remaps) }
+    }
+
+    /// Throws what swipekey would refuse in these remaps.
+    private static func check(_ remaps: [KeyRemap]) throws {
+        _ = try KeyRemapper(remaps)
+        _ = try DoubleTapper(remaps)
     }
 
     /// Before writing: if the file changed outside the window (edited by hand while it was open),
@@ -61,8 +80,7 @@ final class ConfigStore: ObservableObject {
             throw ConfigError("config.json can't be read right now, so nothing was saved: \(error)")
         }
         guard onDisk != config else { return }
-        try engine.reload(onDisk)
-        config = onDisk
+        try adopt(onDisk)
         throw ConfigError("config.json was changed outside this window. The window now shows that version: make your change again.")
     }
 
@@ -75,6 +93,16 @@ final class ConfigStore: ObservableObject {
         try ensureFile()
         try Config.update(.bindings, toEncoded: bindings, at: url)
         config = next
+    }
+
+    func setRemaps(_ remaps: [KeyRemap]) throws {
+        try checkForOutsideEdits()
+        // Checked and running before writing: a remap the app refuses never reaches the file.
+        try Self.check(remaps)
+        try applyRemaps?(remaps)
+        try ensureFile()
+        try Config.update(.remaps, toEncoded: remaps, at: url)
+        config.remaps = remaps
     }
 
     func setThresholds(swipe: Double, pinch: Double) throws {

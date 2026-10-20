@@ -61,11 +61,12 @@ enum Theme {
 }
 
 enum SettingsTab: CaseIterable {
-    case bindings, sensitivity, general
+    case bindings, keys, sensitivity, general
 
     var title: String {
         switch self {
         case .bindings: return "Bindings"
+        case .keys: return "Keys"
         case .sensitivity: return "Sensitivity"
         case .general: return "General"
         }
@@ -74,6 +75,7 @@ enum SettingsTab: CaseIterable {
     var icon: String {
         switch self {
         case .bindings: return "hand.draw"
+        case .keys: return "keyboard"
         case .sensitivity: return "slider.horizontal.3"
         case .general: return "gearshape"
         }
@@ -112,6 +114,7 @@ struct SettingsView: View {
             Group {
                 switch tab {
                 case .bindings: BindingsView(store: store)
+                case .keys: KeysView(store: store)
                 case .sensitivity: SensitivityView(store: store)
                 case .general: GeneralView(store: store)
                 }
@@ -152,7 +155,7 @@ struct GeneralView: View {
                     ForEach(store.editorChoices, id: \.self) { Text($0).tag($0) }
                 }
                 HStack {
-                    Text("Scroll blocking and key remaps live in config.json.")
+                    Text("Scroll blocking lives in config.json.")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Open config.json") { attempt { try store.openInEditor() } }

@@ -1,0 +1,57 @@
+<style>
+  .sheet { background:#fff; border:1px solid #d6d6dc; border-radius:12px; padding:16px 18px; font-family:-apple-system,BlinkMacSystemFont,sans-serif; color:#1d1d1f; font-size:12px; }
+  .steps { display:flex; gap:8px; margin-bottom:14px; }
+  .steps div { flex:1; font-size:10px; font-weight:600; color:#999; }
+  .steps div::before { content:""; display:block; height:3px; border-radius:2px; background:#ddd; margin-bottom:4px; }
+  .steps .on { color:#2346D8; } .steps .on::before, .steps .done::before { background:#2346D8; }
+  .rec { border:2px dashed #2346D8; border-radius:10px; padding:16px; text-align:center; background:rgba(35,70,216,.05); }
+  .rec b { display:block; font-size:13px; margin-bottom:4px; }
+  .rec small { color:#777; }
+  .k { display:inline-block; border:1px solid #C9C9D0; border-bottom-width:2px; border-radius:6px; padding:3px 10px; font-size:13px; background:#fff; margin:6px 2px 0; }
+  .row { display:flex; align-items:center; gap:8px; margin-top:12px; }
+  .seg { display:inline-flex; border:1px solid #ccc; border-radius:6px; overflow:hidden; }
+  .seg span { padding:3px 10px; font-size:11px; } .seg .on { background:#2346D8; color:#fff; }
+  .lbl { color:#555; min-width:110px; }
+  .hint { color:#888; font-size:10px; margin-top:4px; }
+  .input { border:1px solid #ccc; border-radius:5px; padding:3px 8px; color:#aaa; font-size:11px; min-width:140px; }
+  .foot { display:flex; justify-content:space-between; margin-top:16px; }
+  .btn { border:1px solid #ccc; border-radius:6px; padding:3px 12px; font-size:11px; } .btn.p { background:#2346D8; color:#fff; border-color:#2346D8; }
+  .sum { font-size:14px; text-align:center; padding:10px 0; }
+  .warn { color:#b26a00; font-size:11px; margin-top:8px; }
+</style>
+
+<h2>Adding a remap: three steps, like adding a gesture</h2>
+<p class="subtitle">Here with your @@ → Return. Tell me in the terminal what's wrong or missing.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">1. Key — you press @</div>
+    <div class="mockup-body">
+      <div class="sheet">
+        <div class="steps"><div class="on">1. Key</div><div>2. Becomes</div><div>3. Review</div></div>
+        <div class="rec"><b>Press the key to remap</b><small>with its modifiers if you want them (⌘, ⌥…)</small><br><span class="k">@</span></div>
+        <div class="row"><span class="lbl">When</span><span class="seg"><span>Every press</span><span class="on">Pressed twice</span></span></div>
+        <div class="hint">Pressed twice: a single @ still types @, a quarter of a second late.</div>
+        <div class="row"><span class="lbl">Only when sent by</span><span class="input">Any app (keyboard)</span></div>
+        <div class="hint">For mouse utilities like Logi Options+. Not available with "Pressed twice" yet.</div>
+        <div class="foot"><span class="btn">Cancel</span><span class="btn p">Next</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">2. Becomes — you press Return · 3. Review</div>
+    <div class="mockup-body">
+      <div class="sheet">
+        <div class="steps"><div class="done">1. Key</div><div class="on">2. Becomes</div><div>3. Review</div></div>
+        <div class="rec"><b>Press what it should become</b><small>a key or a shortcut</small><br><span class="k">Return</span></div>
+        <div class="foot"><span class="btn">Back</span><span class="btn p">Next</span></div>
+      </div>
+      <div class="sheet" style="margin-top:12px">
+        <div class="steps"><div class="done">1. Key</div><div class="done">2. Becomes</div><div class="on">3. Review</div></div>
+        <div class="sum"><span class="k">@</span><span class="k">@</span> &nbsp;→&nbsp; <span class="k">Return</span></div>
+        <div class="warn">⚠ You won't be able to type "@@" anymore.</div>
+        <div class="foot"><span class="btn">Back</span><span class="btn p">Save</span></div>
+      </div>
+    </div>
+  </div>
+</div>

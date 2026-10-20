@@ -84,6 +84,15 @@ final class DoubleTapTests: XCTestCase {
         XCTAssertEqual(t.deadline, 0.4 + DoubleTapper.defaultWindow)
     }
 
+    func testFlushTypesTheHeldBackPress() throws {
+        var t = try tapper()
+        _ = t.handle(keyCode: at, flags: [], isDown: true, isRepeat: false, at: 0)
+        _ = t.handle(keyCode: at, flags: [], isDown: false, isRepeat: false, at: 0.05)
+        XCTAssertEqual(t.flush(), [down(at), up(at)])
+        XCTAssertNil(t.deadline)
+        XCTAssertEqual(t.flush(), [])
+    }
+
     func testOnlyDoubleTapRemapsAreTaken() throws {
         let single = KeyRemap(from: .init(key: "a"), to: .init(key: "escape"))
         var t = try DoubleTapper([single], layout: AtLayout())

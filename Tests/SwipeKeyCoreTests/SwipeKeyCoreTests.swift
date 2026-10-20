@@ -522,6 +522,26 @@ final class KeyRemapTests: XCTestCase {
         XCTAssertNil(r.map(keyCode: 49, flags: [], sender: { ("hardware", "") }))
     }
 
+    func testReplacedRemapperStillReleasesWhatTheOldOnePressed() throws {
+        var old = try remapper([spaceFromLogi])
+        let down = old.handle(keyCode: 49, flags: [], isDown: true, sender: { self.logi })
+        XCTAssertNotNil(down)
+        // the remap is deleted while Space is held: its release must still lift ⌃⌥
+        var new = try remapper([])
+        new.carryPresses(from: old)
+        XCTAssertEqual(new.handle(keyCode: 49, flags: [], isDown: false, sender: { self.logi }), down)
+        XCTAssertNil(new.handle(keyCode: 49, flags: [], isDown: false, sender: { self.logi }), "only once")
+    }
+
+    func testAReleaseIsOnlyRewrittenWhenItsPressWas() throws {
+        // Space went down before this rule existed (added live): its release must stay a Space
+        // release, or Space stays down in the app.
+        var r = try remapper([KeyRemap(from: .init(key: "space"), to: .init(key: "escape"))])
+        XCTAssertNil(r.handle(keyCode: 49, flags: [], isDown: false, sender: { ("hardware", "") }))
+        XCTAssertNotNil(r.handle(keyCode: 49, flags: [], isDown: true, sender: { ("hardware", "") }))
+        XCTAssertNotNil(r.handle(keyCode: 49, flags: [], isDown: false, sender: { ("hardware", "") }))
+    }
+
     func testAppMatchesNameOrBundleIdCaseInsensitively() throws {
         let byBundle = KeyRemap(from: .init(key: "space", app: "COM.LOGI.OPTIONSPLUS"), to: .init(key: "escape"))
         XCTAssertEqual(try remapper([byBundle]).map(keyCode: 49, flags: [], sender: { self.logi })?.keyCode, 53)

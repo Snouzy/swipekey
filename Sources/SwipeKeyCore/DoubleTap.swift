@@ -94,8 +94,9 @@ public struct DoubleTapper {
         rules[keyCode]?.fromFlags == flags.intersection(Trigger.holdableModifiers).rawValue
     }
 
-    /// Types the held-back press; when the key is still down, its real release goes through later.
-    private mutating func flush() -> [KeystrokeEvent] {
+    /// Types the held-back press now (also when the remaps are replaced); when the key is still
+    /// down, its real release goes through later.
+    public mutating func flush() -> [KeystrokeEvent] {
         guard let first = pending else { return [] }
         pending = nil
         let press = KeystrokeEvent(kind: .keyDown, keyCode: first.code, flags: first.flags)

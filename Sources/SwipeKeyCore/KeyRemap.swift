@@ -98,9 +98,17 @@ public struct KeyRemapper {
         }
     }
 
+    /// Takes over the keys `old` rewrote and that are still down, so their releases are rewritten
+    /// the same way after the remaps change (nothing left stuck).
+    public mutating func carryPresses(from old: KeyRemapper) {
+        pressed.merge(old.pressed) { mine, _ in mine }
+    }
+
     /// Same as `map`, but pairs each key-up with the rewrite of its key-down.
     public mutating func handle(keyCode: CGKeyCode, flags: CGEventFlags, isDown: Bool, sender: () -> (String, String)) -> Output? {
-        if !isDown, let done = pressed.removeValue(forKey: keyCode) { return done }
+        // A release is rewritten only when its press was: a key already down when a rule for it
+        // arrived (live reload) must come up as itself.
+        if !isDown { return pressed.removeValue(forKey: keyCode) }
         guard let out = map(keyCode: keyCode, flags: flags, sender: sender) else { return nil }
         if isDown { pressed[keyCode] = out }
         return out
@@ -136,6 +144,17 @@ public final class KeyRemapTap {
 
     public init(_ remapper: KeyRemapper, doubleTaps: DoubleTapper) {
         self.remapper = remapper
+        self.doubleTaps = doubleTaps
+    }
+
+    /// Applies new remaps right away (main thread). A press held back for a double tap is typed
+    /// first, and keys still down keep their rewrite until released.
+    public func update(_ remapper: KeyRemapper, doubleTaps: DoubleTapper) {
+        let held = self.doubleTaps.flush()
+        post(held, for: held.first?.keyCode ?? 0)
+        var next = remapper
+        next.carryPresses(from: self.remapper)
+        self.remapper = next
         self.doubleTaps = doubleTaps
     }
 

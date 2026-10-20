@@ -79,6 +79,8 @@ Everything in the config can be changed here without touching the JSON, and ever
 
 <img src=".github/assets/settings-add-binding.gif" width="640" alt="Adding a binding: a three-finger swipe down on the trackpad is recognized, then Command Space is picked and the binding saved">
 
+**Remap keys** in the *Keys* tab: press the key (or choose *Pressed twice* for a double tap), press what it should become, review. A remap applies as soon as you save, and two remaps on the same key are refused.
+
 **Tune the sensitivity** with your real fingers: they show up live in the test area, a bar fills toward the threshold, and it tells you whether the swipe fired or how much it fell short. Nothing runs while you test.
 
 <img src=".github/assets/settings-sensitivity.gif" width="640" alt="The Sensitivity test area: three fingers move, the bar fills and the message Fired: 3-finger swipe up → Return appears">
@@ -266,7 +268,7 @@ Two quick presses of `@` send Return, so you can dictate (⌘@ in Wispr Flow) an
 
 A single `@` still types `@`, a quarter of a second late (only then is it known not to be a double tap), or right away when you type another key. With modifiers (⌘@) or held down, the key works as usual. Typing `@@` is no longer possible.
 
-`remaps` sits next to `bindings` at the top level of the config.
+Both recipes can also be made in Settings → *Keys*. `remaps` sits next to `bindings` at the top level of the config.
 
 ## Extend it
 

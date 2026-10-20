@@ -75,20 +75,28 @@ guard let deviceCount = MultitouchSource.start(engine) else {
 if deviceCount == 0 { fail("no multitouch device found") }
 log("swipekey running on \(deviceCount) device(s) with \(config.bindings.count) binding(s).")
 
-// Rewrite key events listed in "remaps" (only installed when there are some: zero cost otherwise).
+// Rewrite key events listed in "remaps" (only installed once there are some: zero cost otherwise).
 var keyRemapTap: KeyRemapTap?
-if !config.remaps.isEmpty {
-    do {
-        let tap = KeyRemapTap(try KeyRemapper(config.remaps), doubleTaps: try DoubleTapper(config.remaps))
+
+/// Puts remaps into effect: installs the tap for the first one, then swaps the rules live.
+func applyRemaps(_ remaps: [KeyRemap]) throws {
+    let remapper = try KeyRemapper(remaps), doubleTaps = try DoubleTapper(remaps)
+    if let keyRemapTap {
+        keyRemapTap.update(remapper, doubleTaps: doubleTaps)
+    } else if !remaps.isEmpty {
+        let tap = KeyRemapTap(remapper, doubleTaps: doubleTaps)
         if debug { tap.onRemap = { from, to, sender in log("remap key \(from) -> \(to) from \(sender)") } }
-        if tap.start() {
-            keyRemapTap = tap
-            log("Remapping \(config.remaps.count) key(s).")
-        } else {
-            log("Could not install the key remapper (Accessibility permission?).")
-        }
-    } catch { fail("invalid remap: \(error)") }
+        guard tap.start() else { throw ConfigError("Could not install the key remapper (Accessibility permission?).") }
+        keyRemapTap = tap
+    }
+    if !remaps.isEmpty { log("Remapping \(remaps.count) key(s).") }
 }
+do {
+    _ = try KeyRemapper(config.remaps)
+    _ = try DoubleTapper(config.remaps)
+} catch { fail("invalid remap: \(error)") }
+// Valid but not installed (no Accessibility permission yet): said in the log, the rest runs.
+do { try applyRemaps(config.remaps) } catch { log("\(error)") }
 
 // Keep multi-finger swipes from also scrolling the window under the cursor.
 var scrollBlocker: ScrollBlocker?
@@ -129,6 +137,7 @@ func reloadConfig() throws {
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let store = ConfigStore(config: config, url: configURL, engine: engine)
+store.applyRemaps = applyRemaps
 let settingsWindow = SettingsWindow(store: store)
 var menuBar: MenuBar?
 
