@@ -79,6 +79,8 @@ Everything in the config can be changed here without touching the JSON, and ever
 
 <img src=".github/assets/settings-add-binding.gif" width="640" alt="Adding a binding: a three-finger swipe down on the trackpad is recognized, then Command Space is picked and the binding saved">
 
+**Teach a gesture** the way you do it, like setting up Touch ID: in a binding's review, *Teach…* asks for the gesture five times, fills a ring as each one counts (or says why not: wrong number of fingers, another direction, too short), then proposes how far that gesture needs to go, from the shortest of your five. Three-finger gestures only ever get easier this way, two-finger ones only stricter, so scrolling never turns into a swipe. Saved as the binding's `"threshold"`; *Reset* goes back to the global value.
+
 **Remap keys** in the *Keys* tab: press the key (or choose *Pressed twice* for a double tap), press what it should become, review. A remap applies as soon as you save, and two remaps on the same key are refused.
 
 **Tune the sensitivity** with your real fingers: they show up live in the test area, a bar fills toward the threshold, and it tells you whether the swipe fired or how much it fell short. Nothing runs while you test.
@@ -110,6 +112,7 @@ Everything in the config can be changed here without touching the JSON, and ever
 |---|---|
 | `gesture` | `swipe` with `fingers` (2 and up) and `direction` (`up`, `down`, `left`, `right`), or `pinch` with `fingers` (2 and up) and `direction` (`in` toward the centre, `out` apart) |
 | `holding` | optional: modifier keys you hold on the keyboard during the gesture (`cmd`, `shift`, `option`, `control`). The binding fires only with exactly those held, so a plain swipe and a ⌘ + swipe can do different things |
+| `threshold` | optional, per binding: how far this gesture must go (same units as `swipeThreshold` / `pinchThreshold`), usually set with *Teach…* in Settings. When missing, the global value is used |
 | `action` | `key` with `key` and optional `modifiers` (`cmd`, `shift`, `option`, `control`, `fn`), or `shell` with `command` |
 | `key` | `a`–`z`, `0`–`9`, punctuation, `return`, `enter`, `tab`, `space`, `delete`, `escape`, arrows, `home`, `end`, `pageup`, `pagedown`, `f1`–`f12`, or a numeric key code. Characters follow your keyboard layout: `z` is the key that types z, on QWERTY, AZERTY, QWERTZ or Dvorak |
 | `swipeThreshold` | how far the fingers travel before it fires, as a fraction of the trackpad (default `0.12`) |

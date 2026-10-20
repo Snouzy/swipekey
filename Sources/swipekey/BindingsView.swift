@@ -130,6 +130,10 @@ struct BindingCard: View {
                     Text("while holding \(Modifiers.symbols(binding.holding).joined(separator: " "))")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                if let taught = binding.threshold {
+                    Label("taught · \(TeachView.percent(taught))", systemImage: "hand.point.up.left")
+                        .font(.caption).foregroundStyle(Theme.accent)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "arrow.right").foregroundStyle(.secondary).accessibilityHidden(true)

@@ -28,6 +28,8 @@ final class TouchLab: ObservableObject {
 
     /// Called with each gesture recognized while capturing (on the main queue).
     var onGesture: ((SwipeKeyCore.Gesture) -> Void)?
+    /// Called with every frame while capturing (on the main queue), e.g. to teach a gesture.
+    var onFrame: ((TouchFrame) -> Void)?
 
     private let engine: Engine
     private var users = 0
@@ -74,6 +76,7 @@ final class TouchLab: ObservableObject {
 
     private func process(_ frame: TouchFrame) {
         guard users > 0 else { return }
+        onFrame?(frame)
         let gestures = swipe.process(frame) + pinch.process(frame)
         let active = frame.touches.filter(\.isTouching)
         fingers = active.map { Finger(id: $0.identifier, x: $0.x, y: 1 - $0.y) }

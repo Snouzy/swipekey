@@ -59,6 +59,18 @@ final class TaughtThresholdTests: XCTestCase {
         }
     }
 
+    func testATaughtValueOnlyGoesWithItsGesture() {
+        var draft = BindingDraft(Binding(gesture: up3, action: .key("return", modifiers: [])))
+        draft.teach(0.04)
+        XCTAssertEqual(draft.binding?.threshold, 0.04)
+        draft.direction = .down
+        XCTAssertNil(draft.binding?.threshold, "taught for swipe up, not down")
+        draft.direction = .up
+        XCTAssertEqual(draft.binding?.threshold, 0.04)
+        draft.teach(nil)
+        XCTAssertNil(draft.binding?.threshold)
+    }
+
     func testDraftCarriesTheThreshold() {
         let binding = Binding(gesture: up3, action: .key("return", modifiers: []), threshold: 0.07)
         XCTAssertEqual(BindingDraft(binding).binding, binding)
