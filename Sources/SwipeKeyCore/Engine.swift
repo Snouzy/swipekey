@@ -100,25 +100,31 @@ public final class Engine {
             actions[try binding.trigger(), default: []].append(try binding.action.makeAction())
         }
         let swipeThreshold = config.swipeThreshold, pinchThreshold = config.pinchThreshold
-        // Taught distances, per gesture: the smallest when bindings of one gesture differ.
-        var taught: [Gesture: Double] = [:]
+        // Taught distances, per binding (gesture plus held modifiers).
+        var taughtValues: [Trigger: Double] = [:]
         for binding in config.bindings {
             guard let threshold = binding.threshold else { continue }
             guard threshold > 0, threshold < 1 else {
                 throw ConfigError("\(binding.gesture): \"threshold\" must be between 0 and 1, not \(threshold).")
             }
-            taught[binding.gesture] = min(taught[binding.gesture] ?? threshold, threshold)
+            taughtValues[try binding.trigger()] = threshold
         }
         // Bound with the modifiers held when the gesture would fire: a binding that needs ⌘ doesn't
         // count, and doesn't lock the session, while ⌘ is up.
         let bound = actions
         let isBound: IsBound = { bound[Trigger(gesture: $0, held: heldModifiers())] != nil }
+        // Kept within the global value's bounds whenever it moves (see `Teach.effective`).
+        let taught: (Gesture) -> Double? = { gesture in
+            guard let value = taughtValues[Trigger(gesture: gesture, held: heldModifiers())] else { return nil }
+            if case .pinch = gesture { return Teach.effective(value, for: gesture, global: pinchThreshold) }
+            return Teach.effective(value, for: gesture, global: swipeThreshold)
+        }
         // New gesture types plug in here.
         return (actions, {
             let swipe = SwipeRecognizer(threshold: swipeThreshold, isBound: isBound)
             let pinch = PinchRecognizer(threshold: pinchThreshold, isBound: isBound)
-            swipe.thresholds = taught
-            pinch.thresholds = taught
+            swipe.taught = taught
+            pinch.taught = taught
             return [swipe, pinch]
         })
     }

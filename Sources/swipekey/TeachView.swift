@@ -61,6 +61,11 @@ struct TeachView: View {
         .frame(width: 520)
         .background(Theme.content)
         .tint(Theme.accent)
+        // The whole sheet captures, result screen included: a gesture done there must not run
+        // its action for real.
+        .capturingTouches(store.lab, swipe: store.config.swipeThreshold, pinch: store.config.pinchThreshold)
+        .onAppear { store.lab.onFrame = observe }
+        .onDisappear { store.lab.onFrame = nil }
     }
 
     /// Five segments around the gesture's animation, filling as examples come in.
@@ -101,9 +106,6 @@ struct TeachView: View {
                 Text("Your fingers show up here").font(.caption).foregroundStyle(.secondary)
             }
             .frame(height: 150)
-            .capturingTouches(store.lab, swipe: store.config.swipeThreshold, pinch: store.config.pinchThreshold)
-            .onAppear { store.lab.onFrame = observe }
-            .onDisappear { store.lab.onFrame = nil }
         }
     }
 
@@ -129,6 +131,10 @@ struct TeachView: View {
         case let .wrongFingers(n): return "That was \(n) fingers."
         case let .other(seen): return "That looked like a \(seen.description)."
         case .tooSmall: return "A bit further."
+        case .tooSlow: return "Quicker and straighter: a slow two-finger swipe reads as a scroll."
+        case .notStraight:
+            if case .pinch = gesture { return "Keep the fingers around the same centre." }
+            return "Straighter, with the fingers moving together."
         }
     }
 

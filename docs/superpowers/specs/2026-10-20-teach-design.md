@@ -23,26 +23,33 @@ nouveau Mac".
 - "Use it" sets the value on the draft; the binding is written when the editor's Save is pressed,
   like every other part of a binding.
 - **Stored per binding** as an optional `"threshold"` in the config. Bindings without it use the
-  global `swipeThreshold` / `pinchThreshold`. When several bindings of one gesture (with different
-  held modifiers) have one, the smallest is used for that gesture (the recognizer decides the
-  gesture before the modifiers matter).
+  global `swipeThreshold` / `pinchThreshold`. Each binding keeps its own: a plain swipe up taught
+  and ⌘ + swipe up untaught don't affect each other (the recognizer looks the value up with the
+  modifiers held, as it already does for "is this gesture bound").
 - The binding card shows a small "taught" tag.
 
 ## The numbers (my calls)
 
-- An example's size is measured as the recognizer measures it: the mean of each finger's own
-  travel along the gesture's axis, from when the gesture's finger count settled (swipes); the
-  change of the fingers' mean distance to their centre (pinches).
-- **Proposal: 60% of the smallest example**, rounded to 3 decimals, then bounded:
-  - **3+ fingers: never above the current global value**, never below 0.03 (swipe) / 0.015
-    (pinch). Teaching must not create misses that the 5 examples didn't show (Mathias's complaint
+- **An example counts only when the real recognizer fires on it** (bound to that gesture alone,
+  at the minimum size), so a resting thumb, an early lift, straightness, finger agreement and the
+  2-finger quickness rule are judged exactly as in everyday use. Its size is the recognizer's own
+  measure (mean per-finger travel along the axis; change of the fingers' spread for pinches).
+  Checked on Mathias's 163 recorded sessions: every real swipe is accepted.
+- **Proposal: 60% of the smallest example**, leaving out an example under half the median (a
+  slip), rounded to 3 decimals, then bounded:
+  - **3+ fingers: never above the current global value**, never below the settings' lowest
+    values, 0.04 (swipe) / 0.02 (pinch). Teaching must not create misses that the 5 examples didn't show (Mathias's complaint
     was misses). If his examples are all long, the value stays where it is, and the sheet says so.
   - **2 fingers: never below the current global value** (the anti-goal: learning never makes
     2-finger gestures more eager, they compete with scrolling and zoom), never above 0.25 (swipe)
     / 0.15 (pinch).
-- Example rejected when: a different finger count; another direction (the largest movement was
-  along another direction, or a pinch the other way); under 0.02 (swipe) / 0.01 (pinch). Touches
-  with one finger are ignored (clicks).
+- **The bounds hold whenever the global value moves**, not only when teaching: the engine applies
+  them to every taught value (`Teach.effective`). Raising the global for 2-finger swipes raises a
+  taught 2-finger value with it; lowering it for 3+ fingers lowers theirs.
+- When an example doesn't count, the sheet says why: another number of fingers, another
+  direction, too small (under 0.02 swipe / 0.01 pinch), too slow for a 2-finger swipe (it reads as
+  a scroll), or not straight. Touches with one finger are ignored (clicks).
+- The whole sheet captures the trackpad, result screen included: nothing fires while it's open.
 
 ## Not in this step
 

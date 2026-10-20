@@ -7,23 +7,36 @@ public enum Teach {
     public static let fraction = 0.6
 
     /// The distance proposed for `gesture` from its examples, against the `current` global value.
-    /// 3+ fingers never get stricter than now (teaching must not add misses the examples didn't
-    /// show); 2 fingers never get more eager than now (they compete with scrolling and zooming).
+    /// An example under half the median is a slip, not the user's way, and is left out.
     public static func proposal(for gesture: Gesture, examples: [Double], current: Double) -> Double {
-        guard let smallest = examples.min() else { return current }
+        let sorted = examples.sorted()
+        guard !sorted.isEmpty else { return current }
+        let middle = sorted.count / 2
+        let median = sorted.count % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+        let smallest = sorted.first { $0 >= median / 2 } ?? sorted[0]
         let raw = (smallest * fraction * 1000).rounded() / 1000
+        return effective(raw, for: gesture, global: current)
+    }
+
+    /// A taught value as it applies next to the `global` one, whenever either changes: 3+ fingers
+    /// never stricter than the global (teaching must not add misses), never under the settings'
+    /// lowest value; 2 fingers never more eager than the global (they compete with scrolling and
+    /// zooming), never over a ceiling.
+    public static func effective(_ taught: Double, for gesture: Gesture, global: Double) -> Double {
         let (floor, ceiling): (Double, Double)
         switch gesture {
-        case .swipe: (floor, ceiling) = (0.03, 0.25)
-        case .pinch: (floor, ceiling) = (0.015, 0.15)
+        case .swipe: (floor, ceiling) = (0.04, 0.25)
+        case .pinch: (floor, ceiling) = (0.02, 0.15)
         }
-        if gesture.fingers >= 3 { return min(max(raw, min(floor, current)), current) }
-        return max(min(raw, max(ceiling, current)), current)
+        if gesture.fingers >= 3 { return max(min(taught, global), min(floor, global)) }
+        return max(min(taught, max(ceiling, global)), global)
     }
 }
 
 /// One teaching run: feed it the trackpad's frames; at the end of each touch it says whether that
-/// was a good example of the gesture, and why not.
+/// was a good example of the gesture, and why not. An example counts when the real recognizer
+/// fires on it (so a resting thumb, an early lift or the 2-finger quickness rule are judged as in
+/// everyday use); its size is the recognizer's own measure.
 public struct TeachSession {
     public enum Feedback: Equatable {
         /// A good example, with its size (swipe distance or pinch spread change).
@@ -34,6 +47,10 @@ public struct TeachSession {
         case other(Gesture)
         /// Right gesture, but too small to count.
         case tooSmall
+        /// A 2-finger swipe too slow or long to be told from a scroll.
+        case tooSlow
+        /// Far enough but drifting, or fingers not moving together.
+        case notStraight
     }
 
     public static let examplesNeeded = 5
@@ -42,21 +59,44 @@ public struct TeachSession {
     public private(set) var examples: [Double] = []
     public var isDone: Bool { examples.count >= Self.examplesNeeded }
 
+    /// The recognizer as in everyday use, bound to this gesture only, firing at the minimum size.
+    private let swipe: SwipeRecognizer?
+    private let pinch: PinchRecognizer?
+    private let minimum: Double
+
     // The touch in progress.
+    private var fired = false
+    private var size = 0.0
     private var maxFingers = 0
     private var starts: [Int: (x: Double, y: Double)] = [:]
     private var startSpread = 0.0
-    /// The largest movement seen for each gesture, at the gesture's finger count.
+    /// The largest movement seen for each gesture, at the gesture's finger count: for the reason
+    /// an attempt didn't count.
     private var best: [Gesture: Double] = [:]
 
-    public init(gesture: Gesture) { self.gesture = gesture }
+    public init(gesture: Gesture) {
+        self.gesture = gesture
+        let only: IsBound = { $0 == gesture }
+        switch gesture {
+        case .swipe:
+            minimum = 0.02
+            swipe = SwipeRecognizer(threshold: minimum, isBound: only)
+            pinch = nil
+        case .pinch:
+            minimum = 0.01
+            swipe = nil
+            pinch = PinchRecognizer(threshold: minimum, isBound: only)
+        }
+    }
 
     public mutating func observe(_ frame: TouchFrame) -> Feedback? {
+        let gestures = (swipe?.process(frame) ?? []) + (pinch?.process(frame) ?? [])
+        if gestures.contains(gesture) { fired = true }
+        size = max(size, recognizerSize())
+
         let active = frame.touches.filter(\.isTouching)
         guard !active.isEmpty else { return finishTouch() }
         maxFingers = max(maxFingers, active.count)
-        // Measured only with the gesture's fingers, from when that set landed; fingers lifting at
-        // the end stop the measure without losing it.
         guard active.count == gesture.fingers else { return nil }
         if !active.allSatisfy({ starts[$0.identifier] != nil }) {
             starts = Dictionary(active.map { ($0.identifier, (x: $0.x, y: $0.y)) }, uniquingKeysWith: { first, _ in first })
@@ -68,6 +108,23 @@ public struct TeachSession {
         case .pinch: measurePinch(active)
         }
         return nil
+    }
+
+    /// How far the recognizer has measured the movement toward this gesture.
+    private func recognizerSize() -> Double {
+        switch gesture {
+        case let .swipe(_, direction):
+            guard let travel = swipe?.travel else { return 0 }
+            switch direction {
+            case .up: return travel.dy
+            case .down: return -travel.dy
+            case .right: return travel.dx
+            case .left: return -travel.dx
+            }
+        case let .pinch(_, direction):
+            let change = pinch?.spreadChange ?? 0
+            return direction == .in ? -change : change
+        }
     }
 
     private mutating func measureSwipe(_ active: [Touch], aspect: Double) {
@@ -95,23 +152,24 @@ public struct TeachSession {
 
     private mutating func finishTouch() -> Feedback? {
         defer {
+            fired = false
+            size = 0
             maxFingers = 0
             starts = [:]
             best = [:]
         }
         guard maxFingers >= 2, !isDone else { return nil }
+        if fired, size >= minimum {
+            let rounded = (size * 10_000).rounded() / 10_000
+            examples.append(rounded)
+            return .accepted(rounded)
+        }
         guard maxFingers == gesture.fingers else { return .wrongFingers(maxFingers) }
         let mine = best[gesture] ?? 0
         if let top = best.max(by: { $0.value < $1.value }), top.key != gesture, top.value > mine { return .other(top.key) }
-        let minimum: Double
-        switch gesture {
-        case .swipe: minimum = 0.02
-        case .pinch: minimum = 0.01
-        }
         guard mine >= minimum else { return .tooSmall }
-        let size = (mine * 10_000).rounded() / 10_000
-        examples.append(size)
-        return .accepted(size)
+        if case .swipe(2, _) = gesture { return .tooSlow }
+        return .notStraight
     }
 
     /// The fingers' mean distance to their centre.

@@ -286,7 +286,7 @@ struct BindingEditor: View {
         return HStack(spacing: 10) {
             Image(systemName: "hand.point.up.left").foregroundStyle(Theme.accent)
             if let taught = binding.threshold {
-                Text("Taught: fires after \(TeachView.percent(taught)) of the trackpad")
+                Text("Taught: fires after \(TeachView.percent(Teach.effective(taught, for: binding.gesture, global: global))) of the trackpad")
             } else {
                 Text("Fires after \(TeachView.percent(global)) of the trackpad (default)")
             }
