@@ -79,7 +79,7 @@ log("swipekey running on \(deviceCount) device(s) with \(config.bindings.count) 
 var keyRemapTap: KeyRemapTap?
 if !config.remaps.isEmpty {
     do {
-        let tap = KeyRemapTap(try KeyRemapper(config.remaps))
+        let tap = KeyRemapTap(try KeyRemapper(config.remaps), doubleTaps: try DoubleTapper(config.remaps))
         if debug { tap.onRemap = { from, to, sender in log("remap key \(from) -> \(to) from \(sender)") } }
         if tap.start() {
             keyRemapTap = tap
@@ -116,6 +116,7 @@ func reloadConfig() throws {
         let next = try Config.load(from: configURL)
         _ = try Engine(config: next)
         _ = try KeyRemapper(next.remaps)
+        _ = try DoubleTapper(next.remaps)
     }
     log("Reloading \(configURL.path).")
     MultitouchSource.stop()

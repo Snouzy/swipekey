@@ -6,6 +6,8 @@ import CoreGraphics
 ///
 ///     { "from": { "key": "space", "app": "Logi Options+" },
 ///       "to":   { "key": "space", "modifiers": ["control", "option"] } }
+///
+/// With `"taps": 2`, two quick presses of the key send the other one (see `DoubleTapper`).
 public struct KeyRemap: Codable, Equatable {
     public struct From: Codable, Equatable {
         public var key: String
@@ -13,16 +15,26 @@ public struct KeyRemap: Codable, Equatable {
         public var modifiers: [String]
         /// Sender to match: app name or bundle identifier, case-insensitive. Nil: any sender.
         public var app: String?
+        /// 1: every press is rewritten. 2: only two quick presses in a row (a double tap).
+        public var taps: Int
 
-        public init(key: String, modifiers: [String] = [], app: String? = nil) {
-            self.key = key; self.modifiers = modifiers; self.app = app
+        public init(key: String, modifiers: [String] = [], app: String? = nil, taps: Int = 1) {
+            self.key = key; self.modifiers = modifiers; self.app = app; self.taps = taps
         }
-        private enum CodingKeys: String, CodingKey { case key, modifiers, app }
+        private enum CodingKeys: String, CodingKey { case key, modifiers, app, taps }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             key = try c.decode(String.self, forKey: .key)
             modifiers = try c.decodeIfPresent([String].self, forKey: .modifiers) ?? []
             app = try c.decodeIfPresent(String.self, forKey: .app)
+            taps = try c.decodeIfPresent(Int.self, forKey: .taps) ?? 1
+        }
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(key, forKey: .key)
+            try c.encode(modifiers, forKey: .modifiers)
+            try c.encodeIfPresent(app, forKey: .app)
+            if taps != 1 { try c.encode(taps, forKey: .taps) }
         }
     }
     public struct To: Codable, Equatable {
@@ -42,6 +54,10 @@ public struct KeyRemap: Codable, Equatable {
     public var to: To
 
     public init(from: From, to: To) { self.from = from; self.to = to }
+
+    func checkTaps() throws {
+        guard (1...2).contains(from.taps) else { throw ConfigError("A remap's \"taps\" is 1 or 2, not \(from.taps).") }
+    }
 }
 
 /// The hot path. Built once from the config; `map` is a dictionary lookup on the key code, and the
@@ -71,6 +87,8 @@ public struct KeyRemapper {
 
     public init(_ remaps: [KeyRemap], layout: KeyboardLayout = SystemKeyboardLayout()) throws {
         for r in remaps {
+            try r.checkTaps()
+            guard r.from.taps == 1 else { continue } // DoubleTapper's
             let from = try KeyPressAction(key: r.from.key, modifiers: r.from.modifiers, layout: layout)
             if from.flags.contains(.maskSecondaryFn) { throw ConfigError("\"fn\" can't be used in a remap's \"from\".") }
             let to = try KeyPressAction(key: r.to.key, modifiers: r.to.modifiers, layout: layout)
@@ -110,12 +128,16 @@ public struct KeyRemapper {
 /// Rewrites matching key events in place at the HID level, before any app (or other tap) sees them.
 public final class KeyRemapTap {
     private var remapper: KeyRemapper
+    private var doubleTaps: DoubleTapper
     private var tap: CFMachPort?
     private var senders: [Int64: (String, String)] = [:]
     /// Called on each rewrite (used by `--debug`).
     public var onRemap: ((_ from: CGKeyCode, _ to: CGKeyCode, _ sender: String) -> Void)?
 
-    public init(_ remapper: KeyRemapper) { self.remapper = remapper }
+    public init(_ remapper: KeyRemapper, doubleTaps: DoubleTapper) {
+        self.remapper = remapper
+        self.doubleTaps = doubleTaps
+    }
 
     public func start() -> Bool {
         let mask = CGEventMask((1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue))
@@ -145,8 +167,22 @@ public final class KeyRemapTap {
         // our own posted keystrokes go straight through (no loop, no double rewrite)
         if event.getIntegerValueField(.eventSourceUserData) == Keystroke.marker { return Unmanaged.passUnretained(event) }
         let code = CGKeyCode(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
-        guard let out = remapper.handle(keyCode: code, flags: event.flags, isDown: type == .keyDown, sender: { sender(of: event) }) else {
-            return Unmanaged.passUnretained(event)
+        let isDown = type == .keyDown
+        let decision = doubleTaps.handle(keyCode: code, flags: event.flags, isDown: isDown,
+                                         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, at: now())
+        scheduleExpiry()
+        post(decision.post, for: code)
+        guard decision.keep else { return nil }
+        // After posting, this event must be posted too, or it would reach apps before what we posted.
+        let forward = { (event: CGEvent) -> Unmanaged<CGEvent>? in
+            guard !decision.post.isEmpty else { return Unmanaged.passUnretained(event) }
+            guard let copy = event.copy() else { return nil }
+            copy.setIntegerValueField(.eventSourceUserData, value: Keystroke.marker)
+            copy.post(tap: .cghidEventTap)
+            return nil
+        }
+        guard let out = remapper.handle(keyCode: code, flags: event.flags, isDown: isDown, sender: { sender(of: event) }) else {
+            return forward(event)
         }
         let newCode = out.keyCode, newFlags = out.flags
         onRemap?(code, newCode, senders[event.getIntegerValueField(.eventSourceUnixProcessID)]?.0 ?? "hardware")
@@ -154,12 +190,31 @@ public final class KeyRemapTap {
             // Nothing to press: rewrite in place, the cheapest path.
             event.setIntegerValueField(.keyboardEventKeycode, value: Int64(newCode))
             event.flags = newFlags
-            return Unmanaged.passUnretained(event)
+            return forward(event)
         }
         // New modifiers: drop the original and replay what a keyboard sends (modifiers down, key, modifiers up).
         let steps = type == .keyDown ? Keystroke.press(newCode, flags: newFlags) : Keystroke.release(newCode, flags: newFlags)
         try? Keystroke.post(steps)
         return nil
+    }
+
+    private func now() -> TimeInterval { ProcessInfo.processInfo.systemUptime }
+
+    private func post(_ steps: [KeystrokeEvent], for code: CGKeyCode) {
+        guard !steps.isEmpty else { return }
+        try? Keystroke.post(steps)
+        if let to = steps.first(where: { $0.kind == .keyDown })?.keyCode, to != code { onRemap?(code, to, "double tap") }
+    }
+
+    /// Types a held-back single press once its double-tap window has passed.
+    private func scheduleExpiry() {
+        guard let deadline = doubleTaps.deadline else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, deadline - now())) { [weak self] in
+            guard let self else { return }
+            // A timer may run a hair early: a millisecond of slack.
+            let steps = self.doubleTaps.expire(at: self.now() + 0.001)
+            self.post(steps, for: steps.first?.keyCode ?? 0)
+        }
     }
 
     private func sender(of event: CGEvent) -> (String, String) {

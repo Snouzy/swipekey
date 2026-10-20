@@ -115,7 +115,7 @@ Everything in the config can be changed here without touching the JSON, and ever
 | `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
 | `menuBarIcon` | show the menu bar icon (default `true`, also in the settings window). Set it back to `true` and `make restart` if you hid it and want it back |
 | `editor` | app that *Edit config…* opens the file with, e.g. `"Cursor"` or `"Visual Studio Code"` (default: your default app for JSON). Also set from the menu's *Open config with* |
-| `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipe below |
+| `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender, optional `taps`: 2 for a double tap) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipes below |
 
 ## Examples
 
@@ -253,6 +253,18 @@ Some mouse utilities send a shortcut's key without its modifiers on non-US keybo
     "to":   { "key": "space", "modifiers": ["control", "option"] } }
 ]
 ```
+
+### Press a key twice for another one
+
+Two quick presses of `@` send Return, so you can dictate (⌘@ in Wispr Flow) and send with the left hand only:
+
+```json
+"remaps": [
+  { "from": { "key": "@", "taps": 2 }, "to": { "key": "return" } }
+]
+```
+
+A single `@` still types `@`, a quarter of a second late (only then is it known not to be a double tap), or right away when you type another key. With modifiers (⌘@) or held down, the key works as usual. Typing `@@` is no longer possible.
 
 `remaps` sits next to `bindings` at the top level of the config.
 
