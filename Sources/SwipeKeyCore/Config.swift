@@ -51,17 +51,23 @@ public struct Config: Codable, Equatable {
     public var bindings: [Binding]
     /// Key events to rewrite, e.g. to fix a shortcut another app sends without its modifiers.
     public var remaps: [KeyRemap]
+    /// Apps and websites where shortcuts stay quiet.
+    public var exclusions: [Exclusion]
     /// Show the icon in the menu bar.
     public var menuBarIcon: Bool
+    /// Show the icon in the Dock.
+    public var dockIcon: Bool
     /// App that "Edit config…" opens the file with, e.g. "Cursor". Nil uses the default app for JSON.
     public var editor: String?
 
     public init(
         swipeThreshold: Double = 0.12, pinchThreshold: Double = 0.05, blockScrollWithFingers: Int = 3,
-        bindings: [Binding], remaps: [KeyRemap] = [], menuBarIcon: Bool = true, editor: String? = nil
+        bindings: [Binding], remaps: [KeyRemap] = [], exclusions: [Exclusion] = [], menuBarIcon: Bool = true, dockIcon: Bool = false, editor: String? = nil
     ) {
         self.remaps = remaps
+        self.exclusions = exclusions
         self.menuBarIcon = menuBarIcon
+        self.dockIcon = dockIcon
         self.editor = editor
         self.swipeThreshold = swipeThreshold
         self.pinchThreshold = pinchThreshold
@@ -69,7 +75,7 @@ public struct Config: Codable, Equatable {
         self.bindings = bindings
     }
 
-    public enum CodingKeys: String, CodingKey { case swipeThreshold, pinchThreshold, blockScrollWithFingers, bindings, remaps, menuBarIcon, editor }
+    public enum CodingKeys: String, CodingKey { case swipeThreshold, pinchThreshold, blockScrollWithFingers, bindings, remaps, exclusions, menuBarIcon, dockIcon, editor }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -78,7 +84,9 @@ public struct Config: Codable, Equatable {
         blockScrollWithFingers = try c.decodeIfPresent(Int.self, forKey: .blockScrollWithFingers) ?? 3
         bindings = try c.decode([Binding].self, forKey: .bindings)
         remaps = try c.decodeIfPresent([KeyRemap].self, forKey: .remaps) ?? []
+        exclusions = try c.decodeIfPresent([Exclusion].self, forKey: .exclusions) ?? []
         menuBarIcon = try c.decodeIfPresent(Bool.self, forKey: .menuBarIcon) ?? true
+        dockIcon = try c.decodeIfPresent(Bool.self, forKey: .dockIcon) ?? false
         editor = try c.decodeIfPresent(String.self, forKey: .editor)
     }
 
@@ -128,5 +136,13 @@ public struct Config: Codable, Equatable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return String(decoding: try encoder.encode(self), as: UTF8.self)
+    }
+}
+
+/// Quit in the Dock only takes the Dock icon away: gestures and keys keep working from the menu bar.
+public enum DockQuit {
+    /// `systemReason`: set when macOS itself asks, for a log out, restart or shutdown.
+    public static func staysInMenuBar(menuBarIcon: Bool, systemReason: UInt32?) -> Bool {
+        menuBarIcon && systemReason == nil
     }
 }

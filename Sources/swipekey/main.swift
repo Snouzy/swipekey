@@ -64,8 +64,13 @@ if !canPostEvents {
     log("Swipekey can't send keystrokes: allow it in System Settings → Privacy & Security → Accessibility, then restart it.")
 }
 
+let foreground: Foreground
+do { foreground = Foreground(try ExclusionList(config.exclusions)) } catch { fail("invalid exclusion: \(error)") }
+foreground.onLog = log
+
 let engine: Engine
 do { engine = try Engine(config: config) } catch { fail("\(error)") }
+engine.isExcluded = foreground.isExcluded
 engine.onActionError = { gesture, error in log("action for \(gesture) failed: \(error)") }
 engine.onNearMiss = { miss in log("near miss: \(miss)") }
 
@@ -81,10 +86,13 @@ var keyRemapTap: KeyRemapTap?
 /// Puts remaps into effect: installs the tap for the first one, then swaps the rules live.
 func applyRemaps(_ remaps: [KeyRemap]) throws {
     let remapper = try KeyRemapper(remaps), doubleTaps = try DoubleTapper(remaps)
+    foreground.remapsWatchURLs = remaps.contains { $0.from.url != nil }
     if let keyRemapTap {
         keyRemapTap.update(remapper, doubleTaps: doubleTaps)
     } else if !remaps.isEmpty {
         let tap = KeyRemapTap(remapper, doubleTaps: doubleTaps)
+        tap.isExcluded = foreground.isExcluded
+        tap.isWithin = foreground.isWithin
         if debug { tap.onRemap = { from, to, sender in log("remap key \(from) -> \(to) from \(sender)") } }
         guard tap.start() else { throw ConfigError("Could not install the key remapper (Accessibility permission?).") }
         keyRemapTap = tap
@@ -125,6 +133,7 @@ func reloadConfig() throws {
         _ = try Engine(config: next)
         _ = try KeyRemapper(next.remaps)
         _ = try DoubleTapper(next.remaps)
+        _ = try ExclusionList(next.exclusions)
     }
     log("Reloading \(configURL.path).")
     MultitouchSource.stop()
@@ -133,19 +142,53 @@ func reloadConfig() throws {
     throw ConfigError("Could not restart: \(String(cString: strerror(errno)))")
 }
 
-// A background app (LSUIElement): no Dock icon, only the optional menu bar icon.
+// A background app (LSUIElement): no Dock icon unless asked, only the optional menu bar icon.
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+func showDockIcon(_ shown: Bool) {
+    app.setActivationPolicy(shown ? .regular : .accessory)
+}
+showDockIcon(config.dockIcon)
 let store = ConfigStore(config: config, url: configURL, engine: engine)
 store.applyRemaps = applyRemaps
+store.applyExclusions = foreground.update
+foreground.start()
 let settingsWindow = SettingsWindow(store: store)
+store.onDockIconChange = showDockIcon
+
+/// Opening the settings brings back a Dock icon that Quit took away.
+func openSettings() {
+    showDockIcon(store.config.dockIcon)
+    settingsWindow.show()
+}
+
+/// A click on the Dock icon opens the settings; Quit in the Dock only takes the icon away.
+/// (The menu bar's Quit exits directly and never comes here.)
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        openSettings()
+        return true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let reason = NSAppleEventManager.shared().currentAppleEvent?.attributeDescriptor(forKeyword: kAEQuitReason)?.enumCodeValue
+        guard DockQuit.staysInMenuBar(menuBarIcon: store.config.menuBarIcon, systemReason: reason) else {
+            MultitouchSource.stop()
+            return .terminateNow
+        }
+        settingsWindow.hide()
+        showDockIcon(false)
+        return .terminateCancel
+    }
+}
+let appDelegate = AppDelegate()
+app.delegate = appDelegate
 var menuBar: MenuBar?
 
 func showMenuBar(_ shown: Bool) {
     if shown, menuBar == nil {
         menuBar = MenuBar(store: store, reload: {
             do { try reloadConfig() } catch { MenuBar.show(error) }
-        }, openSettings: settingsWindow.show)
+        }, openSettings: openSettings)
     } else if !shown {
         menuBar?.remove()
         menuBar = nil

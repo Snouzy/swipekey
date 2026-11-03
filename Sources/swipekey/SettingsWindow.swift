@@ -9,6 +9,8 @@ final class SettingsWindow {
 
     init(store: ConfigStore) { self.store = store }
 
+    func hide() { window?.close() }
+
     func show() {
         do { try store.refreshFromDisk() } catch { MenuBar.show(error) }
         if window == nil {
@@ -61,12 +63,13 @@ enum Theme {
 }
 
 enum SettingsTab: CaseIterable {
-    case bindings, keys, sensitivity, general
+    case bindings, keys, exclusions, sensitivity, general
 
     var title: String {
         switch self {
         case .bindings: return "Bindings"
         case .keys: return "Keys"
+        case .exclusions: return "Exclusions"
         case .sensitivity: return "Sensitivity"
         case .general: return "General"
         }
@@ -76,6 +79,7 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .bindings: return "hand.draw"
         case .keys: return "keyboard"
+        case .exclusions: return "nosign"
         case .sensitivity: return "slider.horizontal.3"
         case .general: return "gearshape"
         }
@@ -115,6 +119,7 @@ struct SettingsView: View {
                 switch tab {
                 case .bindings: BindingsView(store: store)
                 case .keys: KeysView(store: store)
+                case .exclusions: ExclusionsView(store: store)
                 case .sensitivity: SensitivityView(store: store)
                 case .general: GeneralView(store: store)
                 }
@@ -146,6 +151,10 @@ struct GeneralView: View {
                 Toggle("Show the icon in the menu bar", isOn: Binding(
                     get: { store.config.menuBarIcon },
                     set: { shown in attempt { try store.setMenuBarIcon(shown) } }
+                ))
+                Toggle("Show the icon in the Dock", isOn: Binding(
+                    get: { store.config.dockIcon },
+                    set: { shown in attempt { try store.setDockIcon(shown) } }
                 ))
                 Picker("Open config with", selection: Binding(
                     get: { store.config.editor ?? "" },

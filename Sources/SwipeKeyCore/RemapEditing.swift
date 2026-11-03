@@ -10,6 +10,10 @@ public struct RemapDraft: Equatable {
     public var taps = 1
     /// The sender to match, typed by hand; blank for any. Ignored for a double tap.
     public var app = ""
+    /// Where it works; `placeValue` is the app or the website.
+    public enum Place: Equatable { case everywhere, app, website }
+    public var place = Place.everywhere
+    public var placeValue = ""
     public var toKey: String?
     public var toModifiers: Set<String> = []
 
@@ -20,16 +24,24 @@ public struct RemapDraft: Equatable {
         modifiers = Set(remap.from.modifiers.map(KeyCodes.canonicalModifier))
         taps = remap.from.taps
         app = remap.from.app ?? ""
+        if let inApp = remap.from.inApp { place = .app; placeValue = inApp }
+        if let url = remap.from.url { place = .website; placeValue = url }
         toKey = remap.to.key
         toModifiers = Set(remap.to.modifiers.map(KeyCodes.canonicalModifier))
     }
+
+    private var trimmedPlace: String { placeValue.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// A place was chosen and filled in, or none is needed.
+    public var placeIsComplete: Bool { place == .everywhere || !trimmedPlace.isEmpty }
 
     /// Both keys are there; not checked yet.
     private var candidate: KeyRemap? {
         guard let key, let toKey else { return nil }
         let trimmed = app.trimmingCharacters(in: .whitespacesAndNewlines)
         return KeyRemap(
-            from: .init(key: key, modifiers: KeyCodes.orderedModifiers(modifiers), app: taps == 2 || trimmed.isEmpty ? nil : trimmed, taps: taps),
+            from: .init(key: key, modifiers: KeyCodes.orderedModifiers(modifiers), app: taps == 2 || trimmed.isEmpty ? nil : trimmed, taps: taps,
+                        inApp: place == .app ? trimmedPlace : nil, url: place == .website ? trimmedPlace : nil),
             to: .init(key: toKey, modifiers: KeyCodes.orderedModifiers(toModifiers))
         )
     }
@@ -48,7 +60,7 @@ public struct RemapDraft: Equatable {
     }
 
     /// The finished remap, or nil while a part is missing or invalid.
-    public var remap: KeyRemap? { error == nil ? candidate : nil }
+    public var remap: KeyRemap? { error == nil && placeIsComplete ? candidate : nil }
 }
 
 /// The changes the Keys tab makes to the remaps list. Each returns the new list; the caller saves it.
@@ -56,13 +68,19 @@ public struct RemapDraft: Equatable {
 public enum RemapEdits {
     /// Every remap, other than the one at `editing`, on the same key: the same physical key with the
     /// same modifiers, unless both name different apps. A double tap holds back every press of its
-    /// key, so it clashes with any other remap of that key.
+    /// key, so it clashes with any other remap of that key. Remaps for different places never clash,
+    /// and one for a place wins over a general one of the same kind.
     public static func clashes(with remap: KeyRemap, editing: Int?, in list: [KeyRemap], layout: KeyboardLayout = SystemKeyboardLayout()) -> [Int] {
         guard let mine = resolve(remap, layout) else { return [] }
         return list.indices.filter { index in
             guard index != editing, let other = resolve(list[index], layout), other.code == mine.code else { return false }
-            if remap.from.taps == 2 || list[index].from.taps == 2 { return true }
-            guard other.flags == mine.flags else { return false }
+            let places = (remap.from.inApp ?? remap.from.url)?.lowercased(), otherPlaces = (list[index].from.inApp ?? list[index].from.url)?.lowercased()
+            if let places, let otherPlaces, places != otherPlaces { return false }
+            let onePlace = (places == nil) != (otherPlaces == nil)
+            if remap.from.taps == 2 || list[index].from.taps == 2 {
+                return !(onePlace && remap.from.taps == list[index].from.taps && other.flags == mine.flags)
+            }
+            guard other.flags == mine.flags, !onePlace else { return false }
             if let a = remap.from.app?.lowercased(), let b = list[index].from.app?.lowercased(), a != b { return false }
             return true
         }
@@ -111,11 +129,13 @@ extension KeyRemap {
     }
 
     public var subtitle: String? {
+        let place = from.url.map { "only on \($0)" } ?? from.inApp.map { "only in \(AppName.display($0))" }
         if from.taps == 2 {
             let typed = ActionSpec.key(from.key, modifiers: from.modifiers).keyCaps.joined()
-            return "a single \(typed) still types \(typed)"
+            return ["a single \(typed) still types \(typed)", place].compactMap { $0 }.joined(separator: ", ")
         }
-        return from.app.map { "only when \($0) sends it" }
+        let parts = [from.app.map { "only when \($0) sends it" }, place].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     /// The pressed key as key caps, twice for a double tap.

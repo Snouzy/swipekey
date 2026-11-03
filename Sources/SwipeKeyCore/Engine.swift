@@ -64,6 +64,8 @@ public final class Engine {
         }
     }
 
+    /// Whether the named shortcut is excluded where the user is now. Asked on the main queue.
+    public var isExcluded: ((String) -> Bool)?
     /// Called for every bound gesture that fires (used by `--debug` and the menu).
     public var onGesture: ((Trigger) -> Void)?
     public var onActionError: ((Trigger, Error) -> Void)?
@@ -167,7 +169,8 @@ public final class Engine {
         return actions[trigger] ?? []
     }
 
-    private func fire(_ trigger: Trigger) {
+    func fire(_ trigger: Trigger) {
+        if isExcluded?(trigger.description) == true { return }
         onGesture?(trigger)
         for action in actions(for: trigger) {
             do { try action.perform() } catch { onActionError?(trigger, error) }
