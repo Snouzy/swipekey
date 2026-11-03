@@ -23,9 +23,13 @@ final class ConfigStore: ObservableObject {
     lazy var lab = TouchLab(engine: engine)
     /// Called after `menuBarIcon` changes.
     var onMenuBarIconChange: ((Bool) -> Void)?
+    /// Called after `dockIcon` changes.
+    var onDockIconChange: ((Bool) -> Void)?
     /// Puts remaps into effect in the running app (set by main). Throws when it can't, e.g. no
     /// Accessibility permission for the first remap.
     var applyRemaps: (([KeyRemap]) throws -> Void)?
+    /// Puts exclusions into effect in the running app (set by main).
+    var applyExclusions: ((ExclusionList) -> Void)?
 
     init(config: Config, url: URL, engine: Engine) {
         self.config = config
@@ -59,8 +63,11 @@ final class ConfigStore: ObservableObject {
     private func adopt(_ fresh: Config) throws {
         let remapsChanged = fresh.remaps != config.remaps
         if remapsChanged { try Self.check(fresh.remaps) }
+        let exclusions = try ExclusionList(fresh.exclusions)
         try engine.reload(fresh)
         config = fresh
+        applyExclusions?(exclusions)
+        onDockIconChange?(fresh.dockIcon)
         if remapsChanged { try applyRemaps?(fresh.remaps) }
     }
 
@@ -105,6 +112,15 @@ final class ConfigStore: ObservableObject {
         config.remaps = remaps
     }
 
+    func setExclusions(_ exclusions: [Exclusion]) throws {
+        try checkForOutsideEdits()
+        let list = try ExclusionList(exclusions)
+        try ensureFile()
+        try Config.update(.exclusions, toEncoded: exclusions, at: url)
+        config.exclusions = exclusions
+        applyExclusions?(list)
+    }
+
     func setThresholds(swipe: Double, pinch: Double) throws {
         try checkForOutsideEdits()
         var next = config
@@ -132,6 +148,14 @@ final class ConfigStore: ObservableObject {
         try Config.update(.menuBarIcon, to: shown, at: url)
         config.menuBarIcon = shown
         onMenuBarIconChange?(shown)
+    }
+
+    func setDockIcon(_ shown: Bool) throws {
+        try checkForOutsideEdits()
+        try ensureFile()
+        try Config.update(.dockIcon, to: shown, at: url)
+        config.dockIcon = shown
+        onDockIconChange?(shown)
     }
 
     func openInEditor() throws {

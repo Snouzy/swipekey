@@ -28,7 +28,7 @@ test:
 BUILD_ID   := $(APP)/Contents/Resources/build-id
 
 app: build
-	@id=$$(cat .build/release/swipekey support/Info.plist | shasum -a 256 | cut -d' ' -f1); \
+	@id=$$(cat .build/release/swipekey support/Info.plist support/AppIcon.icns | shasum -a 256 | cut -d' ' -f1); \
 	if [ "$$(cat $(BUILD_ID) 2>/dev/null)" = "$$id" ] && codesign --verify $(APP) 2>/dev/null; then \
 		echo "Swipekey.app is up to date: keeping it (and its Accessibility grant)."; \
 	else \
@@ -37,6 +37,7 @@ app: build
 		install -d $(APP)/Contents/MacOS $(APP)/Contents/Resources; \
 		install -m 644 support/Info.plist $(APP)/Contents/Info.plist; \
 		install -m 755 .build/release/swipekey $(APP_BIN); \
+		install -m 644 support/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns; \
 		echo "$$id" > $(BUILD_ID); \
 		codesign --force --sign "$(SIGN_IDENTITY)" --identifier $(LABEL) $(APP); \
 		if [ "$(SIGN_IDENTITY)" = "-" ]; then \

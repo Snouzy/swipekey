@@ -79,7 +79,9 @@ Everything in the config can be changed here without touching the JSON, and ever
 
 <img src=".github/assets/settings-add-binding.gif" width="640" alt="Adding a binding: a three-finger swipe down on the trackpad is recognized, then Command Space is picked and the binding saved">
 
-**Remap keys** in the *Keys* tab: press the key (or choose *Pressed twice* for a double tap), press what it should become, review. A remap applies as soon as you save, and two remaps on the same key are refused.
+**Remap keys** in the *Keys* tab: press the key (or choose *Pressed twice* for a double tap), press what it should become, review. A remap can work everywhere, in one app or on one website, and the most specific one wins. It applies as soon as you save, and two remaps on the same key in the same place are refused.
+
+**Keep shortcuts quiet in some places** in the *Exclusions* tab: pick an app or type a website, for all shortcuts or only some of them. A key excluded this way types right away, with no double-tap delay.
 
 **Tune the sensitivity** with your real fingers: they show up live in the test area, a bar fills toward the threshold, and it tells you whether the swipe fired or how much it fell short. Nothing runs while you test.
 
@@ -116,8 +118,12 @@ Everything in the config can be changed here without touching the JSON, and ever
 | `pinchThreshold` | how much the fingers close or spread before a pinch fires, as a fraction of the trackpad (default `0.05`) |
 | `blockScrollWithFingers` | swallow scrolling while this many fingers (or more) touch the trackpad, so a swipe doesn't also scroll the window underneath (default `3`, `0` turns it off) |
 | `menuBarIcon` | show the menu bar icon (default `true`, also in the settings window). Set it back to `true` and `make restart` if you hid it and want it back |
+| `dockIcon` | show an icon in the Dock; a click on it opens the settings, and Quit in the Dock only removes the icon: Swipekey stays in the menu bar, and the icon comes back when you open the settings or log in again (default `false`, also in the settings window) |
 | `editor` | app that *Edit config…* opens the file with, e.g. `"Cursor"` or `"Visual Studio Code"` (default: your default app for JSON). Also set from the menu's *Open config with* |
-| `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender, optional `taps`: 2 for a double tap) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipes below |
+| `remaps` | key events to rewrite: `from` (`key`, optional exact `modifiers`, optional `app` name or bundle id of the sender, optional `taps`: 2 for a double tap, optional `inApp`: only while this app is in front, or `url`: only on this website, with the same patterns as `exclusions`) → `to` (`key`, `modifiers`). Rewritten in place before any app sees them; no cost when empty. See the recipes below |
+| `exclusions` | where shortcuts stay quiet: `app` (name or bundle id of the app in front) or `url` (see below), with optional `only`: the shortcuts concerned, named as in the settings window (`@@`, `shift+cmd+a`, `3-finger swipe up`). Without `only`, all of them. A remap limited to an app or a website still works there. No cost when empty |
+
+`"url"` patterns: `github.com` is the whole site, `github.com/a` that page and what's under it, and `*` is any text (`github.com/*/pull/*`, `*.google.com`). The scheme, `www.`, the query and the fragment don't count. The address is read with AppleScript from Chrome, Brave, Edge, Arc, Vivaldi and Safari, not Firefox, twice a second while one of them is in front and an exclusion names a URL. macOS asks once per browser. So a shortcut can follow the previous page for up to half a second after you change tabs. The address stays on your Mac.
 
 ## Examples
 
@@ -268,7 +274,17 @@ Two quick presses of `@` send Return, so you can dictate (⌘@ in Wispr Flow) an
 
 A single `@` still types `@`, a quarter of a second late (only then is it known not to be a double tap), or right away when you type another key. With modifiers (⌘@) or held down, the key works as usual. Typing `@@` is no longer possible.
 
-Both recipes can also be made in Settings → *Keys*. `remaps` sits next to `bindings` at the top level of the config.
+### Remap a key on one website only
+
+```json
+"remaps": [
+  { "from": { "key": "@", "taps": 2, "url": "github.com/*/pull/*" }, "to": { "key": "return", "modifiers": ["cmd"] } }
+]
+```
+
+Off that website the key stays itself, or follows your general remap of it if you have one.
+
+These recipes can also be made in Settings → *Keys*. `remaps` sits next to `bindings` at the top level of the config.
 
 ## Extend it
 
@@ -288,6 +304,7 @@ Both recipes can also be made in Settings → *Keys*. `remaps` sits next to `bin
 - `MultitouchSupport` is private Apple API. It has been stable for over a decade and many tools rely on it, but a macOS update could break it.
 - `make install` signs the app with your Apple Development or Developer ID certificate when your keychain has one, and macOS then keeps the Accessibility grant across updates. Without a certificate the app is signed ad hoc, and macOS ties the grant to that exact build: after each update, turn Swipekey off and on in the Accessibility list, then `make restart`. Either way, `make install` only replaces the app when the code changed.
 - macOS still sees the gesture. If a system gesture uses the same fingers and direction, both fire. With those gestures off, macOS treats a three-finger swipe as plain scrolling: swipekey swallows that scrolling (see `blockScrollWithFingers`).
+- An excluded gesture runs nothing, but multi-finger scrolling is still swallowed there (see `blockScrollWithFingers`).
 
 ## License
 

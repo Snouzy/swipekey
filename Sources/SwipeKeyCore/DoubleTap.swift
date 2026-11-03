@@ -12,6 +12,8 @@ public struct DoubleTapper {
     public static let defaultWindow: TimeInterval = 0.25
 
     struct Rule {
+        let name: String
+        let place: RemapPlace?
         let fromFlags: UInt64
         let toCode: CGKeyCode
         let toFlags: CGEventFlags
@@ -19,6 +21,7 @@ public struct DoubleTapper {
 
     /// The first press of a possible double tap, not typed yet.
     private struct Pending {
+        let rule: Rule
         let code: CGKeyCode
         let flags: CGEventFlags
         let at: TimeInterval
@@ -32,7 +35,7 @@ public struct DoubleTapper {
     }
 
     public let window: TimeInterval
-    private var rules: [CGKeyCode: Rule] = [:]
+    private var rules: [CGKeyCode: [Rule]] = [:]
     private var pending: Pending?
     /// The second press of a double tap: its release is dropped too.
     private var swallowRelease: Set<CGKeyCode> = []
@@ -50,18 +53,23 @@ public struct DoubleTapper {
             let from = try KeyPressAction(key: r.from.key, modifiers: r.from.modifiers, layout: layout)
             let to = try KeyPressAction(key: r.to.key, modifiers: r.to.modifiers, layout: layout)
             let code = try from.resolvedKeyCode()
-            if rules[code] != nil { throw ConfigError("Two double-tap remaps for \"\(r.from.key)\".") }
-            rules[code] = Rule(fromFlags: from.flags.intersection(Trigger.holdableModifiers).rawValue,
-                               toCode: try to.resolvedKeyCode(), toFlags: to.flags)
+            let place = try RemapPlace(inApp: r.from.inApp, url: r.from.url)
+            if rules[code]?.contains(where: { $0.place?.identity == place?.identity }) == true {
+                throw ConfigError("Two double-tap remaps for \"\(r.from.key)\" in the same place.")
+            }
+            rules[code, default: []].append(Rule(name: r.shortcutName, place: place, fromFlags: from.flags.intersection(Trigger.holdableModifiers).rawValue,
+                                                 toCode: try to.resolvedKeyCode(), toFlags: to.flags))
         }
+        // A remap for one place wins over a general one on the same key, whatever their order.
+        rules = rules.mapValues { $0.filter { $0.place != nil } + $0.filter { $0.place == nil } }
     }
 
-    public mutating func handle(keyCode: CGKeyCode, flags: CGEventFlags, isDown: Bool, isRepeat: Bool, at time: TimeInterval) -> Decision {
+    public mutating func handle(keyCode: CGKeyCode, flags: CGEventFlags, isDown: Bool, isRepeat: Bool, at time: TimeInterval, excluded: (String) -> Bool = { _ in false }, within: (RemapPlace) -> Bool = { _ in false }) -> Decision {
         if var first = pending {
-            if keyCode == first.code && isDown && !isRepeat && matches(keyCode, flags) && time - first.at <= window {
+            if keyCode == first.code && isDown && !isRepeat && first.rule.fromFlags == held(flags) && time - first.at <= window {
                 pending = nil
                 swallowRelease.insert(keyCode)
-                let rule = rules[keyCode]!
+                let rule = first.rule
                 return Decision(post: Keystroke.press(rule.toCode, flags: rule.toFlags) + Keystroke.release(rule.toCode, flags: rule.toFlags), keep: false)
             }
             if keyCode == first.code && !isDown && !first.released {
@@ -72,13 +80,15 @@ public struct DoubleTapper {
             // Anything else (another key, a repeat, a press too late): type the first press, then
             // look at this event afresh.
             let typed = flush()
-            var next = handle(keyCode: keyCode, flags: flags, isDown: isDown, isRepeat: isRepeat, at: time)
+            var next = handle(keyCode: keyCode, flags: flags, isDown: isDown, isRepeat: isRepeat, at: time, excluded: excluded, within: within)
             next.post = typed + next.post
             return next
         }
         if !isDown, swallowRelease.remove(keyCode) != nil { return Decision(post: [], keep: false) }
-        if isDown && !isRepeat && matches(keyCode, flags) {
-            pending = Pending(code: keyCode, flags: flags, at: time)
+        if isDown && !isRepeat, let rule = rules[keyCode]?.first(where: { rule in
+            rule.fromFlags == held(flags) && (rule.place.map(within) ?? !excluded(rule.name))
+        }) {
+            pending = Pending(rule: rule, code: keyCode, flags: flags, at: time)
             return Decision(post: [], keep: false)
         }
         return Decision(post: [], keep: true)
@@ -90,8 +100,8 @@ public struct DoubleTapper {
         return flush()
     }
 
-    private func matches(_ keyCode: CGKeyCode, _ flags: CGEventFlags) -> Bool {
-        rules[keyCode]?.fromFlags == flags.intersection(Trigger.holdableModifiers).rawValue
+    private func held(_ flags: CGEventFlags) -> UInt64 {
+        flags.intersection(Trigger.holdableModifiers).rawValue
     }
 
     /// Types the held-back press now (also when the remaps are replaced); when the key is still

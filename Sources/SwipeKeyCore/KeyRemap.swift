@@ -17,17 +17,23 @@ public struct KeyRemap: Codable, Equatable {
         public var app: String?
         /// 1: every press is rewritten. 2: only two quick presses in a row (a double tap).
         public var taps: Int
+        /// Only while this app is in front: name or bundle identifier, case-insensitive.
+        public var inApp: String?
+        /// Only on this website, see `URLPattern`.
+        public var url: String?
 
-        public init(key: String, modifiers: [String] = [], app: String? = nil, taps: Int = 1) {
-            self.key = key; self.modifiers = modifiers; self.app = app; self.taps = taps
+        public init(key: String, modifiers: [String] = [], app: String? = nil, taps: Int = 1, inApp: String? = nil, url: String? = nil) {
+            self.key = key; self.modifiers = modifiers; self.app = app; self.taps = taps; self.inApp = inApp; self.url = url
         }
-        private enum CodingKeys: String, CodingKey { case key, modifiers, app, taps }
+        private enum CodingKeys: String, CodingKey { case key, modifiers, app, taps, inApp, url }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             key = try c.decode(String.self, forKey: .key)
             modifiers = try c.decodeIfPresent([String].self, forKey: .modifiers) ?? []
             app = try c.decodeIfPresent(String.self, forKey: .app)
             taps = try c.decodeIfPresent(Int.self, forKey: .taps) ?? 1
+            inApp = try c.decodeIfPresent(String.self, forKey: .inApp)
+            url = try c.decodeIfPresent(String.self, forKey: .url)
         }
         public func encode(to encoder: Encoder) throws {
             var c = encoder.container(keyedBy: CodingKeys.self)
@@ -35,6 +41,8 @@ public struct KeyRemap: Codable, Equatable {
             try c.encode(modifiers, forKey: .modifiers)
             try c.encodeIfPresent(app, forKey: .app)
             if taps != 1 { try c.encode(taps, forKey: .taps) }
+            try c.encodeIfPresent(inApp, forKey: .inApp)
+            try c.encodeIfPresent(url, forKey: .url)
         }
     }
     public struct To: Codable, Equatable {
@@ -64,6 +72,8 @@ public struct KeyRemap: Codable, Equatable {
 /// sender is only identified (lazily) for key codes that have a rule.
 public struct KeyRemapper {
     struct Rule {
+        let name: String
+        let place: RemapPlace?
         let fromFlags: UInt64
         let app: String? // lowercased
         let toCode: CGKeyCode
@@ -92,10 +102,12 @@ public struct KeyRemapper {
             let from = try KeyPressAction(key: r.from.key, modifiers: r.from.modifiers, layout: layout)
             if from.flags.contains(.maskSecondaryFn) { throw ConfigError("\"fn\" can't be used in a remap's \"from\".") }
             let to = try KeyPressAction(key: r.to.key, modifiers: r.to.modifiers, layout: layout)
-            let rule = Rule(fromFlags: from.flags.intersection(Trigger.holdableModifiers).rawValue,
+            let rule = Rule(name: r.shortcutName, place: try RemapPlace(inApp: r.from.inApp, url: r.from.url), fromFlags: from.flags.intersection(Trigger.holdableModifiers).rawValue,
                             app: r.from.app?.lowercased(), toCode: try to.resolvedKeyCode(), toFlags: to.flags)
             rules[try from.resolvedKeyCode(), default: []].append(rule)
         }
+        // A remap for one place wins over a general one on the same key, whatever their order.
+        rules = rules.mapValues { $0.filter { $0.place != nil } + $0.filter { $0.place == nil } }
     }
 
     /// Takes over the keys `old` rewrote and that are still down, so their releases are rewritten
@@ -105,26 +117,29 @@ public struct KeyRemapper {
     }
 
     /// Same as `map`, but pairs each key-up with the rewrite of its key-down.
-    public mutating func handle(keyCode: CGKeyCode, flags: CGEventFlags, isDown: Bool, sender: () -> (String, String)) -> Output? {
+    public mutating func handle(keyCode: CGKeyCode, flags: CGEventFlags, isDown: Bool, sender: () -> (String, String), excluded: (String) -> Bool = { _ in false }, within: (RemapPlace) -> Bool = { _ in false }) -> Output? {
         // A release is rewritten only when its press was: a key already down when a rule for it
         // arrived (live reload) must come up as itself.
         if !isDown { return pressed.removeValue(forKey: keyCode) }
-        guard let out = map(keyCode: keyCode, flags: flags, sender: sender) else { return nil }
+        guard let out = map(keyCode: keyCode, flags: flags, sender: sender, excluded: excluded, within: within) else { return nil }
         if isDown { pressed[keyCode] = out }
         return out
     }
 
     /// The replacement key code and flags, or nil to leave the event alone.
     /// `sender` returns the sending app's lowercased (name, bundle id); it is only called on a key-code match.
-    public func map(keyCode: CGKeyCode, flags: CGEventFlags, sender: () -> (String, String)) -> Output? {
+    public func map(keyCode: CGKeyCode, flags: CGEventFlags, sender: () -> (String, String), excluded: (String) -> Bool = { _ in false }, within: (RemapPlace) -> Bool = { _ in false }) -> Output? {
         guard let candidates = rules[keyCode] else { return nil }
         let held = flags.intersection(Trigger.holdableModifiers).rawValue
         var who: (String, String)?
         for rule in candidates where rule.fromFlags == held {
+            if let place = rule.place, !within(place) { continue }
             if let app = rule.app {
                 if who == nil { who = sender() }
                 guard app == who!.0 || app == who!.1 else { continue }
             }
+            // A remap made for one place was asked for there: exclusions only quiet the general ones.
+            if rule.place == nil && excluded(rule.name) { continue }
             // keep non-modifier bits (keypad, non-coalesced...), replace the modifiers
             let added = rule.toFlags.intersection(Self.modifierMask).rawValue & ~rule.fromFlags
             return Output(keyCode: rule.toCode, flags: flags.subtracting(Self.modifierMask).union(rule.toFlags), pressesModifiers: added != 0)
@@ -139,6 +154,10 @@ public final class KeyRemapTap {
     private var doubleTaps: DoubleTapper
     private var tap: CFMachPort?
     private var senders: [Int64: (String, String)] = [:]
+    /// Whether the named shortcut is excluded where the user is now. Only asked when a key has a rule.
+    public var isExcluded: ((String) -> Bool)?
+    /// Whether the user is in this app or on this website now.
+    public var isWithin: ((RemapPlace) -> Bool)?
     /// Called on each rewrite (used by `--debug`).
     public var onRemap: ((_ from: CGKeyCode, _ to: CGKeyCode, _ sender: String) -> Void)?
 
@@ -187,8 +206,10 @@ public final class KeyRemapTap {
         if event.getIntegerValueField(.eventSourceUserData) == Keystroke.marker { return Unmanaged.passUnretained(event) }
         let code = CGKeyCode(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
         let isDown = type == .keyDown
+        let excluded: (String) -> Bool = { [isExcluded] in isExcluded?($0) ?? false }
+        let within: (RemapPlace) -> Bool = { [isWithin] in isWithin?($0) ?? false }
         let decision = doubleTaps.handle(keyCode: code, flags: event.flags, isDown: isDown,
-                                         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, at: now())
+                                         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, at: now(), excluded: excluded, within: within)
         scheduleExpiry()
         post(decision.post, for: code)
         guard decision.keep else { return nil }
@@ -200,7 +221,7 @@ public final class KeyRemapTap {
             copy.post(tap: .cghidEventTap)
             return nil
         }
-        guard let out = remapper.handle(keyCode: code, flags: event.flags, isDown: isDown, sender: { sender(of: event) }) else {
+        guard let out = remapper.handle(keyCode: code, flags: event.flags, isDown: isDown, sender: { sender(of: event) }, excluded: excluded, within: within) else {
             return forward(event)
         }
         let newCode = out.keyCode, newFlags = out.flags

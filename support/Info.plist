@@ -8,6 +8,8 @@
     <string>Swipekey</string>
     <key>CFBundleExecutable</key>
     <string>swipekey</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -16,6 +18,8 @@
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Swipekey reads the address of the current tab, only to keep your shortcuts quiet on the websites you excluded. It stays on this Mac.</string>
     <!-- Background agent: no Dock icon or app menu, only the optional menu bar icon. -->
     <key>LSUIElement</key>
     <true/>

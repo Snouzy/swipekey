@@ -61,7 +61,7 @@ struct RemapEditor: View {
                 .padding(22)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .frame(height: 340)
+            .frame(height: 400)
 
             Divider()
             HStack {
@@ -90,7 +90,7 @@ struct RemapEditor: View {
 
     private var canAdvance: Bool {
         switch step {
-        case 1: return draft.key != nil
+        case 1: return draft.key != nil && draft.placeIsComplete
         case 2: return draft.toKey != nil && draft.error == nil
         default: return draft.remap != nil && clash == nil
         }
@@ -121,6 +121,7 @@ struct RemapEditor: View {
                 Text("Pressed twice: a single \(singleKey) still types \(singleKey), a quarter of a second late.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            placeSection
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 10) {
                     Text("Only when sent by")
@@ -131,6 +132,34 @@ struct RemapEditor: View {
                 }
                 Text(draft.taps == 2 ? "Not available with \"Pressed twice\" yet." : "For mouse utilities like Logi Options+.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var placeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("Where")
+                Picker("Where", selection: SwiftUI.Binding(
+                    get: { draft.place },
+                    set: { if $0 != draft.place { draft.place = $0; draft.placeValue = "" } }
+                )) {
+                    Text("Everywhere").tag(RemapDraft.Place.everywhere)
+                    Text("In an app").tag(RemapDraft.Place.app)
+                    Text("On a website").tag(RemapDraft.Place.website)
+                }
+                .pickerStyle(.segmented).labelsHidden().frame(width: 320)
+            }
+            switch draft.place {
+            case .everywhere: EmptyView()
+            case .app: AppChooser(app: $draft.placeValue)
+            case .website:
+                TextField("github.com/*/pull/*", text: $draft.placeValue)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Website")
+                Text("github.com is the whole site, github.com/a that page and what's under it, * is any text. Works in Chrome, Brave, Edge, Arc, Vivaldi and Safari, not Firefox. Elsewhere the key stays itself.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
