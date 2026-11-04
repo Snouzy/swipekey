@@ -2,7 +2,7 @@
 
 # swipekey
 
-Turn Mac trackpad gestures into keystrokes and commands. Three fingers up, and it presses Return.
+Gestures and keys, your way, on Mac. Turn trackpad gestures into keystrokes and commands, and remap keys, per app or per site. Three fingers up, and it presses Return.
 
 One small background app, one JSON file, no account, no subscription. The code is free software under the MIT license.
 
